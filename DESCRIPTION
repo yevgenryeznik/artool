@@ -1,4 +1,4 @@
-Package: rartool
+Package: artool
 Type: Package
 Title: (Response-)Adaptive Randomization Routine for Clinical Trials
 Version: 0.1.0
