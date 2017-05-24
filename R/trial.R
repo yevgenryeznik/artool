@@ -2,6 +2,8 @@
 
 Rcpp::loadModule("trial", TRUE)
 
-setup_trial <- function(w, nsbj, nsim, cohort, proc, proc_param) {
-  return( new(Trial, nsbj, nsim, cohort, proc, w, proc_param) )
+initialize_rr_trial <- function(w, nsbj, nsim, cohort, resp, resp_params, proc, proc_params) {
+  return( new(TrialRR, w, nsbj, nsim, cohort, 
+              list(name = resp, parameters = resp_params), 
+              list(name = proc, parameters = proc_params) ))
 }
