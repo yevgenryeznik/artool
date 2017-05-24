@@ -27,7 +27,7 @@ public:
   // function which generates response(s):
   //  inputs:
   //    int -- a size of the cohort of patients for which responses are generated
-  virtual NumericVector response(int);
+  virtual NumericVector response(int) = 0;
 };
 
 
