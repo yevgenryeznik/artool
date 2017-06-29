@@ -55,7 +55,7 @@ public:
     // initialize resp object and related fields
     resp_distribution = resp_distribution_;
     string resp_distribution_name = resp_distribution_["name"];
-    NumericVector resp_parameters = resp_distribution_["parameters"];
+    NumericMatrix resp_parameters = resp_distribution_["parameters"];
     
     if (resp_distribution_name == "Binary") {
       resp = new BinaryResponse(resp_parameters);
@@ -184,8 +184,7 @@ public:
       set_treatment(s, j, treatment_);
       
       // generate response for a treatment assigned
-      resp->set_parameters(as<List>(resp_distribution["parameters"])[treatment_-1]);
-      response_ = resp->response(1)[0];
+      response_ = resp->response(treatment_);
       set_response(s, j, response_);
       
       
