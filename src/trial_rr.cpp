@@ -18,7 +18,8 @@ private:
   List rr_procedure;                    // List represents Restricted Randomization procedure used with items:
                                         //  name -- string with RR procedure name
                                         //  parameters -- numeric vector of RR procedure parameters
-
+  double significance_level;            // significance level to test hypothesis H0: mu1 = mu2 = ... = muK
+  
   // agregated classes
   Response* resp;                       // object of Response class to generate responses
   RR* rr;                               // object of RR class to adapt randomization probabilities
@@ -29,6 +30,7 @@ private:
   IntegerMatrix treatment;              // matrix of treatment assignments
   NumericMatrix forcing_idx;            // matrix of forcing indicies
   NumericMatrix imbalance;              // matrix of imbalances
+  NumericMatrix selection_bias;         // matrix of selection biases
   IntegerMatrix reject;                 // matrix of null hypothesis rejects
 
 public:
@@ -38,29 +40,31 @@ public:
           int number_of_simulations_,
           int cohort_size_,
           List resp_distribution_,
-          List rr_procedure_):
+          List rr_procedure_, 
+          double significance_level_):
 
     fixed_allocation_ratio(fixed_allocation_ratio_),
     number_of_treatments(fixed_allocation_ratio_.size()),
     number_of_subjects(number_of_subjects_),
     number_of_simulations(number_of_simulations_),
-    cohort_size(cohort_size_)
+    cohort_size(cohort_size_), 
+    significance_level(significance_level_)
     
     {
 
     // initialize resp object and related fields
     resp_distribution = resp_distribution_;
     string resp_distribution_name = resp_distribution_["name"];
-    List resp_parameters = resp_distribution_["parameters"];
+    NumericVector resp_parameters = resp_distribution_["parameters"];
     
     if (resp_distribution_name == "Binary") {
-      resp = new BinaryResponse(NumericVector::create(0.5));
+      resp = new BinaryResponse(resp_parameters);
     }
     else if (resp_distribution_name == "Normal") {
-      resp = new NormalResponse(NumericVector::create(0, 1));
+      resp = new NormalResponse(resp_parameters);
     }
     else if (resp_distribution_name == "Weibull") {
-      resp = new WeibullResponse(NumericVector::create(1, 1));
+      resp = new WeibullResponse(resp_parameters);
     }
     else {
       throw invalid_argument("Inappropriate name of response distribution");
@@ -105,6 +109,7 @@ public:
     treatment = IntegerMatrix(number_of_simulations_,number_of_subjects_);
     forcing_idx = NumericMatrix(number_of_simulations_, number_of_subjects_);
     imbalance = NumericMatrix(number_of_simulations_, number_of_subjects_);
+    selection_bias = NumericMatrix(number_of_simulations_, number_of_subjects_);
     reject = IntegerMatrix(number_of_simulations_, number_of_subjects_);
   }
 
@@ -126,6 +131,7 @@ public:
   IntegerMatrix get_treatment()              { return( treatment ); }
   NumericMatrix get_forcing_idx()            { return( forcing_idx); }
   NumericMatrix get_imbalance()              { return( imbalance ); }
+  NumericMatrix get_selection_bias()         { return( selection_bias ); }
   IntegerMatrix get_reject()                 { return( reject ); }
 
   // setters
@@ -133,6 +139,7 @@ public:
   void set_treatment(int s, int j, int treatment_)  { treatment(s-1, j-1) = treatment_; }
   void set_forcing_idx(int s, int j, double forcing_index_) { forcing_idx(s-1, j-1) = forcing_index_; }
   void set_imbalance(int s, int j, double imbalance_)  { imbalance(s-1, j-1) = imbalance_; }
+  void set_selection_bias(int s, int j, double selection_bias_)  { selection_bias(s-1, j-1) = selection_bias_; }
   void set_reject(int s, int j, int reject_)  { reject(s-1, j-1) = reject_; }
 
   // treatment assignment
@@ -158,13 +165,16 @@ public:
     double response_;
     double forcing_idx_;
     double imbalance_;
+    double selection_bias_;
     int reject_;
     NumericMatrix obs(number_of_subjects, 2);
 
     NumericMatrix prob = NumericMatrix(number_of_subjects, number_of_treatments);
     IntegerVector N(number_of_treatments);
     NumericVector rho = get_target_allocation();
-
+    NumericVector fi(number_of_subjects);
+    IntegerVector guess(number_of_subjects);
+    
     for ( int j = 1; j <= number_of_subjects; j++ ) {
       // adaptation
       rr->adapt(N);
@@ -181,18 +191,26 @@ public:
       
       obs.row(j-1) = NumericVector::create(treatment_, response_);
       
-      // imbalance and forcing index
+      // imbalance 
       N[treatment_-1] += 1;
-      imbalance_ = sum(Rcpp::pow(as<NumericVector>(N) - j*rho, 2))/j;
-      forcing_idx_ = sqrt((float)sum(Rcpp::pow(prob.row(j-1)-rho, 2)));
-
-      // after a single trial simulation forcing index must be transformed into
-      // forcing_idx(s-1, j-1) = sum(get_forcing_idx()[seq(0,j-1)])/j;
-      set_forcing_idx(s, j, forcing_idx_);
+      imbalance_ = sqrt((float)sum(Rcpp::pow(as<NumericVector>(N) - j*rho, 2)))/j;
       set_imbalance(s, j, imbalance_);
+      
+      // forcing index
+      fi(j-1) = sum(Rcpp::pow(prob.row(j-1)-rho, 2));
+      forcing_idx_ = sum(fi[seq(0, j-1)])/j;
+      set_forcing_idx(s, j, forcing_idx_);
+      
+      // sequential bias
+      if (prob(j-1, treatment_-1) == Rcpp::max(prob.row(j-1))) {
+        guess(j-1) = 1;
+      }
+      selection_bias_ = sum(guess[seq(0, j-1)])/j;  
+      set_selection_bias(s, j, selection_bias_);
+      
 
       // test null hypothesis
-      reject_ = anova_test(obs(seq(0,j-1),_), number_of_treatments, 0.05);
+      reject_ = anova_test(obs(seq(0,j-1),_), number_of_treatments, significance_level);
       set_reject(s, j, reject_);
 
     }
@@ -230,6 +248,7 @@ RCPP_MODULE(trial) {
   .property("treatment", &TrialRR::get_treatment)
   .property("forcing_idx", &TrialRR::get_forcing_idx)
   .property("imbalance", &TrialRR::get_imbalance)
+  .property("selection_bias", &TrialRR::get_selection_bias)
   .property("reject", &TrialRR::get_reject)
   ;
 }
