@@ -20,7 +20,7 @@ private:
                                         //  parameters -- numeric vector of RR procedure parameters
   double significance_level;            // significance level to test hypothesis H0: mu1 = mu2 = ... = muK
   bool time_drift;                      // if TRUE then this is so called model with a "time drift", i.e. 
-                                        // j/n, where j is a subject's ID
+                                        // j/n is added to response value, where j is a subject's ID
   
   // agregated classes
   Response* resp;                       // object of Response class to generate responses
@@ -43,15 +43,16 @@ public:
           int cohort_size_,
           List resp_distribution_,
           List rr_procedure_, 
-          double significance_level_):
+          double significance_level_, 
+          bool time_drift_):
 
     fixed_allocation_ratio(fixed_allocation_ratio_),
     number_of_treatments(fixed_allocation_ratio_.size()),
     number_of_subjects(number_of_subjects_),
     number_of_simulations(number_of_simulations_),
     cohort_size(cohort_size_), 
-    significance_level(significance_level_)
-    
+    significance_level(significance_level_),
+    time_drift(time_drift_)
     {
 
     // initialize resp object and related fields
@@ -187,6 +188,9 @@ public:
       
       // generate response for a treatment assigned
       response_ = resp->response(treatment_);
+      if (time_drift) {
+        response_ += j/number_of_subjects;
+      }
       set_response(s, j, response_);
       
       
