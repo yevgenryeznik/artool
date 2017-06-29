@@ -9,25 +9,25 @@ using namespace std;
 // Response class
 class Response {
 private:
-  NumericVector parameters; // vector of Response parameters
+  NumericMatrix parameters; // vector of Response parameters
 
 public:
 
   // constructor of AR class
-  Response(NumericVector);
+  Response(NumericMatrix);
 
 
   // getters
-  NumericVector get_parameters()  const;
+  NumericMatrix get_parameters()  const;
 
   // setters
-  void set_parameters(NumericVector);
+  void set_parameters(NumericMatrix);
 
 
   // function which generates response(s):
   //  inputs:
   //    int -- a size of the cohort of patients for which responses are generated
-  virtual NumericVector response(int) = 0;
+  virtual double response(int) = 0;
 };
 
 
@@ -35,8 +35,8 @@ public:
 // Binary Response
 class BinaryResponse: public Response {
 public:
-  BinaryResponse(NumericVector);
-  NumericVector response(int);
+  BinaryResponse(NumericMatrix);
+  double response(int);
 };
 
 
@@ -44,8 +44,8 @@ public:
 // Normally Distributed Response
 class NormalResponse: public Response {
 public:
-  NormalResponse(NumericVector);
-  NumericVector response(int);
+  NormalResponse(NumericMatrix);
+  double response(int);
 };
 
 
@@ -53,6 +53,6 @@ public:
 // Weibully Distributed Response
 class WeibullResponse: public Response {
 public:
-  WeibullResponse(NumericVector);
-  NumericVector response(int);
+  WeibullResponse(NumericMatrix);
+  double response(int);
 };
