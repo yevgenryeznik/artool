@@ -19,6 +19,8 @@ private:
                                         //  name -- string with RR procedure name
                                         //  parameters -- numeric vector of RR procedure parameters
   double significance_level;            // significance level to test hypothesis H0: mu1 = mu2 = ... = muK
+  bool time_drift;                      // if TRUE then this is so called model with a "time drift", i.e. 
+                                        // j/n, where j is a subject's ID
   
   // agregated classes
   Response* resp;                       // object of Response class to generate responses
@@ -204,7 +206,7 @@ public:
       if (prob(j-1, treatment_-1) == Rcpp::max(prob.row(j-1))) {
         guess(j-1) = 1;
       }
-      selection_bias_ = sum(guess[seq(0, j-1)])/j;  
+      selection_bias_ = (double)sum(guess[seq(0, j-1)])/j;  
       set_selection_bias(s, j, selection_bias_);
       
 
@@ -229,7 +231,7 @@ public:
 RCPP_MODULE(trial) {
 
   class_<TrialRR>("TrialRR")
-  .constructor<IntegerVector,int,int,int,List,List>()
+  .constructor<IntegerVector,int,int,int,List,List,double>()
   .method("simulate_trial", &TrialRR::simulate_trial)
   .method("simulate", &TrialRR::simulate)
   .property("fixedAllocationRatio", &TrialRR::get_fixed_allocation_ratio)
