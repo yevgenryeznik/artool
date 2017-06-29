@@ -125,9 +125,11 @@ public:
   int get_number_of_simulations()            { return( number_of_simulations ); }
   int get_cohort_size()                      { return( cohort_size ); }
   string get_resp_distribution()             { return( resp_distribution["name"] ); }
-  List get_resp_parameters()                 { return( resp_distribution["parameters"] ); }
+  NumericMatrix get_resp_parameters()        { return( resp_distribution["parameters"] ); }
   string get_rr_procedure()                  { return( rr_procedure["name"] ); }
   NumericVector get_rr_parameters()          { return( rr_procedure["parameters"] ); }
+  double get_significance_level()            { return( significance_level ); }
+  bool get_time_drift()                      { return( time_drift ); }
   
   List get_rand_probability()                { return( rand_probability ); }
   NumericMatrix get_response()               { return( response ); }
@@ -235,7 +237,7 @@ public:
 RCPP_MODULE(trial) {
 
   class_<TrialRR>("TrialRR")
-  .constructor<IntegerVector,int,int,int,List,List,double>()
+  .constructor<IntegerVector,int,int,int,List,List,double,bool>()
   .method("simulate_trial", &TrialRR::simulate_trial)
   .method("simulate", &TrialRR::simulate)
   .property("fixedAllocationRatio", &TrialRR::get_fixed_allocation_ratio)
@@ -248,6 +250,8 @@ RCPP_MODULE(trial) {
   .property("responseDistributionParams", &TrialRR::get_resp_parameters)
   .property("randomizationProcedure", &TrialRR::get_rr_procedure)
   .property("randomizationProcedureParams", &TrialRR::get_rr_parameters)
+  .property("significance_level", &TrialRR::get_significance_level)
+  .property("time_drift", &TrialRR::get_time_drift)
   .property("randomizationProbability", &TrialRR::get_rand_probability)
   .property("response", &TrialRR::get_response)
   .property("treatment", &TrialRR::get_treatment)
