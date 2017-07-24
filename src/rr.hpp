@@ -22,9 +22,9 @@ class RR {
   
   // operational characteristics
   NumericMatrix alloc_proportion;        // matrix of allocation proportions
-  NumericVector forcing_idx;             // vector of forcing indicies
+  NumericVector forcing_index;           // vector of forcing indicies
   NumericVector imbalance;               // vector of imbalances
-  NumericVector selection_bias;          // vector of selection biases
+  NumericVector mpm;                     // momentum of probability mass
   
 public:
 
@@ -41,28 +41,35 @@ public:
   IntegerVector get_treatment()               const;
   NumericMatrix get_rand_probability()        const;
   NumericMatrix get_alloc_proportion()        const;
-  NumericVector get_forcing_idx()             const;
+  NumericVector get_forcing_index()           const;
   NumericVector get_imbalance()               const;
-  NumericVector get_selection_bias()          const;
-  
+  NumericVector get_mpm()                     const;
+
 
   // setters
   void set_treatment(int, int);
+  void set_treatment(IntegerVector);
   void set_rand_probability(int, NumericVector);
+  void set_rand_probability(NumericMatrix);
   void set_alloc_proportion(int, NumericVector);
-  void set_forcing_idx(int, double);
+  void set_alloc_proportion(NumericMatrix);
+  void set_forcing_index(int, double);
+  void set_forcing_index(NumericVector);
   void set_imbalance(int, double);
-  void set_selection_bias(int, double);
+  void set_imbalance(NumericVector);
+  void set_mpm(int, double);
+  void set_mpm(NumericVector);
   
   
-  // sample an integer from a set of integers given probabilities
+  // sample an integer from a set of integers, given probabilities
   int sample(IntegerVector, NumericVector);
   
-  // function which randomizes subjects across treatments
-  void randomize();
+  // function which runs randomization
+  void run();
 
-  // function which adapts allocation probabilities
-  virtual void adapt(int, IntegerVector) = 0;
+  // function which adapts allocation probabilities and 
+  // randomize a subject to a treatment, given current allocation ratio 
+  virtual void randomize(int, IntegerVector) = 0;
 };
 
 
@@ -73,8 +80,9 @@ class CRD: public RR {
 public:
   CRD(NumericVector, IntegerVector, int);
   
-  // function which adapts allocation probabilities
-  void adapt(int, IntegerVector) override;
+  // function which adapts allocation probabilities and 
+  // randomize a subject to a treatment, given current allocation ratio 
+  void randomize(int, IntegerVector) override;
 };
 
 
@@ -84,8 +92,9 @@ class PBD: public RR {
 public:
   PBD(NumericVector, IntegerVector, int);
 
-  // function which adapts allocation probabilities
-  void adapt(int, IntegerVector) override;
+  // function which adapts allocation probabilities and 
+  // randomize a subject to a treatment, given current allocation ratio 
+  void randomize(int, IntegerVector) override;
 };
 
 
@@ -95,8 +104,9 @@ class BUD: public RR {
 public:
   BUD(NumericVector, IntegerVector, int);
 
-  // function which adapts allocation probabilities
-  void adapt(int, IntegerVector) override;
+  // function which adapts allocation probabilities and 
+  // randomize a subject to a treatment, given current allocation ratio 
+  void randomize(int, IntegerVector) override;
 };
 
 
@@ -106,8 +116,9 @@ class MWUD: public RR {
 public:
   MWUD(NumericVector, IntegerVector, int);
 
-  // function which adapts allocation probabilities
-  void adapt(int, IntegerVector) override;
+  // function which adapts allocation probabilities and 
+  // randomize a subject to a treatment, given current allocation ratio 
+  void randomize(int, IntegerVector) override;
 };
 
 
@@ -119,14 +130,9 @@ public:
 
   DL(NumericVector, IntegerVector, int);
 
-  // getter
-  IntegerVector get_urn() const;
-
-  // setter
-  void set_urn(IntegerVector);
-
-  // function which adapts allocation probabilities
-  void adapt(int, IntegerVector) override;
+  // function which adapts allocation probabilities and 
+  // randomize a subject to a treatment, given current allocation ratio 
+  void randomize(int, IntegerVector) override;
 };
 
 
@@ -137,8 +143,9 @@ public:
 
   DBCD(NumericVector, IntegerVector, int);
 
-  // function which adapts allocation probabilities
-  void adapt(int, IntegerVector) override;
+  // function which adapts allocation probabilities and 
+  // randomize a subject to a treatment, given current allocation ratio 
+  void randomize(int, IntegerVector) override;
 };
 
 
@@ -149,8 +156,9 @@ public:
 
   MinQD(NumericVector, IntegerVector, int);
 
-  // function which adapts allocation probabilities
-  void adapt(int, IntegerVector) override;
+  // function which adapts allocation probabilities and 
+  // randomize a subject to a treatment, given current allocation ratio 
+  void randomize(int, IntegerVector) override;
 };
 
 
@@ -161,8 +169,9 @@ public:
 
   MaxEnt(NumericVector, IntegerVector, int);
 
-  // function which adapts allocation probabilities
-  void adapt(int, IntegerVector) override;
+  // function which adapts allocation probabilities and 
+  // randomize a subject to a treatment, given current allocation ratio 
+  void randomize(int, IntegerVector) override;
 };
 // ===== END: Restricted Randomization (RR) Procedures targeting unequal allocation =====
 
