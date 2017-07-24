@@ -27,12 +27,12 @@ private:
   
   // simulations outcome
   List rand_probability;                // list of matrices with randomization probabilities
-  List proportions;                     // list of matrices with allocation proportions
+  List alloc_proportion;                // list of matrices with allocation proportions
   NumericMatrix response;               // matrix of subjects' responses
   IntegerMatrix treatment;              // matrix of treatment assignments
-  NumericMatrix forcing_idx;            // matrix of forcing indicies
+  NumericMatrix forcing_index;          // matrix of forcing indicies
   NumericMatrix imbalance;              // matrix of imbalances
-  NumericMatrix selection_bias;         // matrix of selection biases
+  NumericMatrix mpm;                    // matrix of momentums of probability mass
   IntegerMatrix reject;                 // matrix of null hypothesis rejects
 
 public:
@@ -40,7 +40,6 @@ public:
   TrialRR(IntegerVector fixed_allocation_ratio_,
           int number_of_subjects_,
           int number_of_simulations_,
-          int cohort_size_,
           List resp_distribution_,
           List rr_procedure_, 
           double significance_level_):
@@ -107,12 +106,12 @@ public:
 
     // initialize output characteristics
     rand_probability = List(number_of_simulations_);
-    proportions = List(number_of_simulations_);
+    alloc_proportion = List(number_of_simulations_);
     response = NumericMatrix(number_of_simulations_, number_of_subjects_);
     treatment = IntegerMatrix(number_of_simulations_,number_of_subjects_);
-    forcing_idx = NumericMatrix(number_of_simulations_, number_of_subjects_);
+    forcing_index = NumericMatrix(number_of_simulations_, number_of_subjects_);
     imbalance = NumericMatrix(number_of_simulations_, number_of_subjects_);
-    selection_bias = NumericMatrix(number_of_simulations_, number_of_subjects_);
+    mpm = NumericMatrix(number_of_simulations_, number_of_subjects_);
     reject = IntegerMatrix(number_of_simulations_, number_of_subjects_);
   }
 
@@ -131,12 +130,12 @@ public:
   bool get_time_drift()                      { return( time_drift ); }
   
   List get_rand_probability()                { return( rand_probability ); }
-  List get_proportions()                     { return( proportions ); }
+  List get_proportions()                     { return( alloc_proportion ); }
   NumericMatrix get_response()               { return( response ); }
   IntegerMatrix get_treatment()              { return( treatment ); }
-  NumericMatrix get_forcing_idx()            { return( forcing_idx); }
+  NumericMatrix get_forcing_index()          { return( forcing_index); }
   NumericMatrix get_imbalance()              { return( imbalance ); }
-  NumericMatrix get_selection_bias()         { return( selection_bias ); }
+  NumericMatrix get_mpm()                    { return( mpm ); }
   IntegerMatrix get_reject()                 { return( reject ); }
 
   // setters
@@ -144,47 +143,52 @@ public:
   void set_time_drift(bool time_drift_) { time_drift = time_drift_; }
   void set_response(int s, NumericVector response_) { response.row(s-1) = response_; }
   void set_treatment(int s, IntegerVector treatment_)  { treatment.row(s-1) = treatment_; }
-  void set_forcing_idx(int s, NumericVector forcing_index_) { forcing_idx.row(s-1) = forcing_index_; }
+  void set_forcing_index(int s, NumericVector forcing_index_) { forcing_index.row(s-1) = forcing_index_; }
   void set_imbalance(int s, NumericVector imbalance_)  { imbalance.row(s-1) = imbalance_; }
-  void set_selection_bias(int s, NumericVector selection_bias_)  { selection_bias.row(s-1) = selection_bias_; }
-  void set_reject(int s, int j, int reject_)  { reject(s-1, j-1) = reject_; }
+  void set_mpm(int s, NumericVector mpm_)  { mpm.row(s-1) = mpm_; }
+  void set_reject(int s, IntegerVector reject_)  { reject.row(s-1) = reject_; }
 
   // simulation of a single trial (with a number s)
   void simulate_trial(int s) {
-    IntegerVector treatments = seq_len(number_of_treatments);
-    double response_;
-    int reject_;
     NumericMatrix obs(number_of_subjects, 2);
-
-    rr->randomize();
+    NumericVector response_(number_of_subjects);
+    IntegerVector reject_(number_of_subjects);
     
-    for ( int j = 1; j <= number_of_subjects; j++ ) {
-      // adaptation
-      rr->adapt(N);
-      prob.row(j-1) = rr->get_rand_probability();
-      // teratment assignment
-      treatment_ = assign(j, prob.row(j-1));
-      set_treatment(s, j, treatment_);
-      
-      // generate response for a treatment assigned
-      response_ = resp->response(treatment_);
+    // clean the data before randomization
+    rr->set_rand_probability(NumericMatrix(number_of_subjects, number_of_treatments));
+    rr->set_alloc_proportion(NumericMatrix(number_of_subjects, number_of_treatments));
+    rr->set_treatment(IntegerVector(number_of_subjects));
+    rr->set_forcing_index(NumericVector(number_of_subjects));
+    rr->set_imbalance(NumericVector(number_of_subjects));
+    
+    // randomize patients
+    rr->run();
+    
+    rand_probability[s-1] = rr->get_rand_probability();
+    alloc_proportion[s-1] = rr->get_alloc_proportion();
+    set_treatment(s, rr->get_treatment());
+    set_imbalance(s, rr->get_imbalance());
+    set_forcing_index(s, rr->get_forcing_index());
+    set_mpm(s, rr->get_mpm());
+    
+    IntegerVector subjects = seq_len(number_of_subjects);
+    
+    // generate responses given treatment assignments
+    for_each(subjects.begin(), subjects.end(), [this, &response_, &obs](int &j){
+      response_[j-1] = resp->response(rr->get_treatment()[j-1]);
       if (time_drift) {
-        response_ += j/number_of_subjects;
+        response_[j-1] += (double)j/number_of_subjects;
       }
-      set_response(s, j, response_);
-      
-      
-      obs.row(j-1) = NumericVector::create(treatment_, response_);
-      
-      
+      obs.row(j-1) = NumericVector::create(rr->get_treatment()[j-1], response_[j-1]);
+      });
+    set_response(s, response_);
 
-      // test null hypothesis
-      reject_ = anova_test(obs(seq(0,j-1),_), number_of_treatments, significance_level);
-      set_reject(s, j, reject_);
-
-    }
-    rand_probability[s-1] = prob;
-    proportions[s-1] = prop;
+    // test null hypothesis
+    for_each(subjects.begin(), subjects.end(), [this, &reject_, &obs](int &j){
+      reject_[j-1] = anova_test(obs(seq(0,j-1),_), number_of_treatments, significance_level);
+    });
+    set_reject(s, reject_);
+      
   }
 
 
@@ -193,39 +197,40 @@ public:
     IntegerVector trials = seq_len(number_of_simulations);
     for_each(trials.begin(), trials.end(), [this](int &s){ simulate_trial(s); });
   }
-
 };
 
 
-RCPP_MODULE(trial) {
 
+
+RCPP_MODULE(trial) {
+  
   class_<TrialRR>("TrialRR")
-  .constructor<IntegerVector,int,int,int,List,List,double>()
+  .constructor<IntegerVector,int,int,List,List,double>()
   .method("set_significance_level", &TrialRR::set_significance_level)
   .method("set_time_drift", &TrialRR::set_time_drift)
   .method("simulate_trial", &TrialRR::simulate_trial)
   .method("simulate", &TrialRR::simulate)
-  .property("fixedAllocationRatio", &TrialRR::get_fixed_allocation_ratio)
-  .property("targetAllocation", &TrialRR::get_target_allocation)
-  .property("numberOfTreatments", &TrialRR::get_number_of_treatments)
-  .property("numberOfSubjects", &TrialRR::get_number_of_subjects)
-  .property("numberOfSimulations", &TrialRR::get_number_of_simulations)
-  .property("cohortSize", &TrialRR::get_cohort_size)
-  .property("responseDistribution", &TrialRR::get_resp_distribution)
-  .property("responseDistributionParams", &TrialRR::get_resp_parameters)
-  .property("randomizationProcedure", &TrialRR::get_rr_procedure)
-  .property("randomizationProcedureParams", &TrialRR::get_rr_parameters)
+  .property("fixed_allocation_ratio", &TrialRR::get_fixed_allocation_ratio)
+  .property("target_allocation", &TrialRR::get_target_allocation)
+  .property("number_of_treatments", &TrialRR::get_number_of_treatments)
+  .property("number_of_subjects", &TrialRR::get_number_of_subjects)
+  .property("number_of_simulations", &TrialRR::get_number_of_simulations)
+  .property("response_distr", &TrialRR::get_resp_distribution)
+  .property("response_distr_params", &TrialRR::get_resp_parameters)
+  .property("rand_procedure", &TrialRR::get_rr_procedure)
+  .property("rand_procedure_params", &TrialRR::get_rr_parameters)
   .property("significance_level", &TrialRR::get_significance_level)
   .property("time_drift", &TrialRR::get_time_drift)
-  .property("randomizationProbability", &TrialRR::get_rand_probability)
-  .property("allocationProportion", &TrialRR::get_proportions)
+  .property("rand_probability", &TrialRR::get_rand_probability)
+  .property("alloc_proportion", &TrialRR::get_proportions)
   .property("response", &TrialRR::get_response)
   .property("treatment", &TrialRR::get_treatment)
-  .property("forcing_idx", &TrialRR::get_forcing_idx)
+  .property("forcing_index", &TrialRR::get_forcing_index)
   .property("imbalance", &TrialRR::get_imbalance)
-  .property("selection_bias", &TrialRR::get_selection_bias)
+  .property("mpm", &TrialRR::get_mpm)
   .property("reject", &TrialRR::get_reject)
   ;
+  
 }
 
 
