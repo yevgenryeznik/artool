@@ -14,7 +14,11 @@ RR::RR(NumericVector parameters_, IntegerVector fixed_allocation_ratio_, int num
     target_allocation = as<NumericVector>(fixed_allocation_ratio_)/sum(fixed_allocation_ratio_);
     number_of_treatments = fixed_allocation_ratio_.size();
     treatment = IntegerVector(number_of_subjects_);
-    rand_probability = NumericMatrix(number_of_subjects, number_of_treatments);
+    rand_probability = NumericMatrix(number_of_subjects_, number_of_treatments);
+    alloc_proportion = NumericMatrix(number_of_subjects_, number_of_treatments);
+    forcing_index = NumericVector(number_of_subjects_);
+    imbalance = NumericVector(number_of_subjects_);
+    mpm = NumericVector(number_of_subjects_);
   }
 
 
@@ -27,18 +31,23 @@ int RR::get_number_of_subjects()                const { return number_of_subject
 IntegerVector RR::get_treatment()               const { return treatment; }
 NumericMatrix RR::get_rand_probability()        const { return rand_probability; }
 NumericMatrix RR::get_alloc_proportion()        const { return alloc_proportion; }
-NumericVector RR::get_forcing_idx()             const { return forcing_idx; }
+NumericVector RR::get_forcing_index()           const { return forcing_index; }
 NumericVector RR::get_imbalance()               const { return imbalance; }
-NumericVector RR::get_selection_bias()          const { return selection_bias; }
-
+NumericVector RR::get_mpm()                     const { return mpm; }
 
 // setters of Restricted Randomization Procedure (base class)
 void RR::set_treatment(int j, int treatment_)              { treatment[j-1] = treatment_; }  
+void RR::set_treatment(IntegerVector treatment_)           { treatment = treatment_; }  
 void RR::set_rand_probability(int j, NumericVector prob)   { rand_probability.row(j-1) = prob; }
+void RR::set_rand_probability(NumericMatrix prob)          { rand_probability = prob; }
 void RR::set_alloc_proportion(int j, NumericVector prop)   { alloc_proportion.row(j-1) = prop; }
-void RR::set_forcing_idx(int j, double forcing_idx_)       { forcing_idx[j-1] = forcing_idx_; }
+void RR::set_alloc_proportion(NumericMatrix prop)          { alloc_proportion = prop; }
+void RR::set_forcing_index(int j, double forcing_index_)   { forcing_index[j-1] = forcing_index_; }
+void RR::set_forcing_index(NumericVector forcing_index_)   { forcing_index = forcing_index_; }
 void RR::set_imbalance(int j, double imbalance_)           { imbalance[j-1] = imbalance_; }
-void RR::set_selection_bias(int j, double selection_bias_) { selection_bias[j-1] = selection_bias_; }
+void RR::set_imbalance(NumericVector imbalance_)           { imbalance = imbalance_; }
+void RR::set_mpm(int j, double mpm_)                       { mpm[j-1] = mpm_; }
+void RR::set_mpm(NumericVector mpm_)                       { mpm = mpm_; }
 
 
 // sample an integer from a set of integers
@@ -57,27 +66,25 @@ int RR::sample(IntegerVector range, NumericVector prob) {
 
 
 // function which randomizes subjects across treatments
-void RR::randomize() {
+void RR::run() {
   NumericVector rho = get_target_allocation();
   IntegerVector N(number_of_treatments);
-  int treatment_;
-  double forcing_idx_;
+  IntegerVector N1(get_number_of_subjects());
+  double forcing_index_;
   double imbalance_;
-  double selection_bias_;
-  
+  double mpm_;
+
   NumericVector fi(get_number_of_subjects());
-  IntegerVector guess(get_number_of_subjects());
   
   for ( int j = 1; j <= number_of_subjects; j++ ) {
-    // adaptation
-    adapt(j, N);
+    N1 = N;
+    // adaptation and assignment
+    randomize(j, N);
     
-    // teratment assignment
-    treatment_ = sample(seq_len(number_of_treatments), rand_probability.row(j-1));
-    set_treatment(j, treatment_);
-    N[treatment_-1] += 1;
+    // update current allocation ratio
+    N[treatment[j-1]-1] += 1;
     
-    // operational characteristics
+    // allocation proportion
     set_alloc_proportion(j, as<NumericVector>(N)/sum(N));
     
     // imbalance 
@@ -86,16 +93,17 @@ void RR::randomize() {
     
     // forcing index
     fi[j-1] = sum(Rcpp::pow(get_rand_probability().row(j-1)-rho, 2));
-    forcing_idx_ = sum(fi[seq(0, j-1)])/j;
-    set_forcing_idx(j, forcing_idx_);
+    forcing_index_ = mean(fi[seq(0, j-1)]);
+    set_forcing_index(j, forcing_index_);
     
-    // sequential bias
-    
-    if (get_rand_probability()(j-1, treatment_-1) == Rcpp::max(get_rand_probability().row(j-1))) {
-      guess(j-1) = 1;
+    // momentum of probability mass
+    mpm_ = 0;
+    for (int k = 1; k <= number_of_treatments; k++) {
+      N1[k-1] += 1;
+      mpm_ += rand_probability.row(j-1)[k-1]*sqrt((float)sum(Rcpp::pow(as<NumericVector>(N1) - j*rho, 2)));
+      N1[k-1] -= 1;
     }
-    selection_bias_ = mean(as<NumericVector>(guess)[seq(0, j-1)]);  
-    set_selection_bias(j, selection_bias_);
+    set_mpm(j, mpm_);
   }   
 }
 
@@ -104,9 +112,20 @@ void RR::randomize() {
 CRD::CRD(NumericVector parameters_, IntegerVector fixed_allocation_ratio_, int number_of_subjects_):
   RR(parameters_, fixed_allocation_ratio_, number_of_subjects_) {}
 
-void CRD::adapt(int j, IntegerVector N) {
+void CRD::randomize(int j, IntegerVector N) {
+  // fixed allocation ratio
   NumericVector w = as<NumericVector>(get_fixed_allocation_ratio());
-  set_rand_probability(j, w/sum(w));
+  
+  // current alloction probabilities
+  NumericVector prob(get_number_of_treatments());
+  
+  int treatment_;
+  
+  prob = w/sum(w);
+  treatment_ = sample(seq_len(get_number_of_treatments()), prob);
+  
+  set_treatment(j, treatment_);
+  set_rand_probability(j, prob);
 }
 
 
@@ -115,15 +134,28 @@ void CRD::adapt(int j, IntegerVector N) {
 PBD::PBD(NumericVector parameters_, IntegerVector fixed_allocation_ratio_, int number_of_subjects_):
   RR(parameters_, fixed_allocation_ratio_, number_of_subjects_) {}
 
-void PBD::adapt(int j, IntegerVector N){
-  NumericVector w = as<NumericVector>(get_fixed_allocation_ratio());// fixed allocation ratio
-  double b = get_parameters()[0];                                   // PBD has one parameter (b)
-  double bsize = b*sum(w);                                          // block size
-
+void PBD::randomize(int j, IntegerVector N){
+  // fixed allocation ratio
+  NumericVector w = as<NumericVector>(get_fixed_allocation_ratio());
+  
+  // PBD has one parameter (b)
+  double b = get_parameters()[0];          
+  
+  // block size
+  double bsize = b*sum(w);                                          
+  
+  // current alloction probabilities
+  NumericVector prob(get_number_of_treatments());
+  
+  int treatment_;
+  
   // set randomization probabilities based on current allocation ratio (N)
   int k = std::floor((float)((j-1)/bsize));
-  set_rand_probability(j, (w*b*(1+k)-as<NumericVector>(N))/(bsize*(1+k)-(j-1)));
-
+  prob = (w*b*(1+k)-as<NumericVector>(N))/(bsize*(1+k)-(j-1));
+  treatment_ = sample(seq_len(get_number_of_treatments()), prob);
+  
+  set_treatment(j, treatment_);
+  set_rand_probability(j, prob);
 };
 
 
@@ -132,14 +164,25 @@ void PBD::adapt(int j, IntegerVector N){
 BUD::BUD(NumericVector parameters_, IntegerVector fixed_allocation_ratio_, int number_of_subjects_):
   RR(parameters_, fixed_allocation_ratio_, number_of_subjects_) {}
 
-void BUD::adapt(int j, IntegerVector N){
-  NumericVector w = as<NumericVector>(get_fixed_allocation_ratio());// fixed allocation ratio
-  double lambda = get_parameters()[0] ;                             // BUD has one parameter (lambda)
+void BUD::randomize(int j, IntegerVector N){
+  // fixed allocation ratio
+  NumericVector w = as<NumericVector>(get_fixed_allocation_ratio());
+  
+  // BUD has one parameter (lambda)
+  double lambda = get_parameters()[0] ;                             
 
+  // current alloction probabilities
+  NumericVector prob(get_number_of_treatments());
+  
+  int treatment_;
+  
   // set randomization probabilities based on current allocation ratio (N)
   int k = min(Rcpp::floor(as<NumericVector>(N)/w));
-  set_rand_probability(j, (w*(lambda+k)-as<NumericVector>(N))/(sum(w)*(lambda+k)-(j-1)));
-
+  prob = (w*(lambda+k)-as<NumericVector>(N))/(sum(w)*(lambda+k)-(j-1));
+  treatment_ = sample(seq_len(get_number_of_treatments()), prob);
+  
+  set_treatment(j, treatment_);
+  set_rand_probability(j, prob);
 };
 
 
@@ -148,78 +191,74 @@ void BUD::adapt(int j, IntegerVector N){
 MWUD::MWUD(NumericVector parameters_, IntegerVector fixed_allocation_ratio_, int number_of_subjects_):
   RR(parameters_, fixed_allocation_ratio_, number_of_subjects_) {}
 
-void MWUD::adapt(int j, IntegerVector N){
-  NumericVector w = as<NumericVector>(get_fixed_allocation_ratio());// fixed allocation ratio
-  int number_of_treatments = w.size();                              // number of treatments
-  double alpha = get_parameters()[0] ;                              // MWUD has one parameter (alpha)
+void MWUD::randomize(int j, IntegerVector N){
+  // fixed allocation ratio
+  NumericVector w = as<NumericVector>(get_fixed_allocation_ratio());
+  
+  // MWUD has one parameter (alpha)
+  double alpha = get_parameters()[0] ;
+
+  // current alloction probabilities
+  NumericVector prob(get_number_of_treatments());
+  
+  int treatment_;
 
   // set randomization probabilities based on current allocation ratio (N)
-  NumericVector num(number_of_treatments);
-  for (int k = 1; k <= number_of_treatments; k++) {
+  NumericVector num(get_number_of_treatments());
+  for (int k = 1; k <= get_number_of_treatments(); k++) {
     num[k-1] = Rcpp::max(NumericVector::create(alpha*w[k-1] - N[k-1] + (j-1)*w[k-1], 0));
   }
-  set_rand_probability(j, num/sum(num));
+  prob = num/sum(num);
+  treatment_ = sample(seq_len(get_number_of_treatments()), prob);
   
+  set_treatment(j, treatment_);
+  set_rand_probability(j, prob);
 };
 
 
 
 // implementation of DL class
 DL::DL(NumericVector parameters_, IntegerVector fixed_allocation_ratio_, int number_of_subjects_):
-  RR(parameters_, fixed_allocation_ratio_, number_of_subjects_) {}
+  RR(parameters_, fixed_allocation_ratio_, number_of_subjects_) {
+  
+  // initialize urn 
+  urn = IntegerVector(get_number_of_treatments()+1);
+}
 
-IntegerVector DL::get_urn() const { return urn; }
 
-void DL::set_urn(IntegerVector urn_) { urn = urn_; }
-
-// int DL::sample_ball() {
-//   NumericVector prob = as<NumericVector>(urn)/sum(urn);
-//   NumericVector cumulative_prob(urn.size()+1);
-//   double u = runif(1)[0];
-//   int ball;
-// 
-//   for (ball = 1; ball <= urn.size(); ball++) {
-//     cumulative_prob[ball] = cumulative_prob[ball-1] + prob[ball-1];
-//     if (cumulative_prob[ball-1] < u && u < cumulative_prob[ball]) {
-//       break;
-//     }
-//   }
-//   return ball;
-// }
-
-void DL::adapt(int j, IntegerVector N){
-  IntegerVector w = get_fixed_allocation_ratio();                   // fixed allocation ratio
-  double a = get_parameters()[0] ;                                  // DL has one parameter (a)
-  IntegerVector urn_(get_number_of_treatments()+1);                 // urn state
-
+void DL::randomize(int j, IntegerVector N){
+  // fixed allocation ratio
+  IntegerVector w = get_fixed_allocation_ratio();      
+  
+  // DL has one parameter (a)
+  double a = get_parameters()[0] ;                      
+  
+  // current alloction probabilities
   NumericVector prob(get_number_of_treatments());
+  
+  int treatment_;
   
   // set randomization probabilities based on current urn state
   bool flag = true;
-  int ball;
   if (j == 1) {
-    urn_[0] = 1;
-    urn_[seq(1, get_number_of_treatments())] = w;
-    set_urn(urn_);
-  }
-  else{
-    urn_ = get_urn();
+    urn[0] = 1;
+    urn[seq(1, get_number_of_treatments())] = w;
   }
   while(flag){
-    ball = sample(seq_len(urn.size()), as<NumericVector>(urn)/sum(urn))-1;
-    if (ball == 0) {
-      urn_[seq(1, get_number_of_treatments())] = urn_[seq(1, get_number_of_treatments())]+a*w;
-      set_urn(urn_);
+    treatment_ = sample(seq_len(urn.size()), as<NumericVector>(urn)/sum(urn))-1;
+    if (treatment_ == 0) {
+      urn[seq(1, get_number_of_treatments())] = urn[seq(1, get_number_of_treatments())]+a*w;
     }
     else {
-      prob[ball-1] = 1;
-      urn_[ball] = urn_[ball]-1;
-      set_urn(urn_);
+      prob = as<NumericVector>(urn)[seq(1, get_number_of_treatments())]/
+        sum(urn[seq(1, get_number_of_treatments())]);
+      urn[treatment_] = urn[treatment_]-1;
       flag = false;
     }
   }
-  set_rand_probability(j, prob);
   
+  set_treatment(j, treatment_);
+  set_rand_probability(j, prob);
 };
 
 
@@ -227,18 +266,25 @@ void DL::adapt(int j, IntegerVector N){
 DBCD::DBCD(NumericVector parameters_, IntegerVector fixed_allocation_ratio_, int number_of_subjects_):
   RR(parameters_, fixed_allocation_ratio_, number_of_subjects_) {}
 
-void DBCD::adapt(int j, IntegerVector N) {
-  NumericVector w = as<NumericVector>(get_fixed_allocation_ratio());// fixed allocation ratio
-  int number_of_treatments = get_fixed_allocation_ratio().size();   // number of treatments
-  double gm = get_parameters()[0] ;                                 // DBCD has one parameter (gamma)
-  NumericVector rho = w/sum(w);                                     // target allocation 
+void DBCD::randomize(int j, IntegerVector N) {
+  // fixed allocation ratio
+  NumericVector w = as<NumericVector>(get_fixed_allocation_ratio());
+  
+  // DBCD has one parameter (gamma)
+  double gm = get_parameters()[0] ;                                 
+  
+  // current alloction probabilities
+  NumericVector prob(get_number_of_treatments());
+  
+  int treatment_;
 
-  NumericVector prob(number_of_treatments);
+  // target allocation proportion
+  NumericVector rho = w/sum(w);                                     
 
   // set randomization probabilities based on current allocation ratio (N)
   // if all treatments have at least one assignment
   if (  is_true(all(N > 0)) ) {
-    for ( int k = 1; k <= number_of_treatments; k++) {
+    for ( int k = 1; k <= get_number_of_treatments(); k++) {
       prob[k-1] = rho[k-1]*pow(rho[k-1]/(N[k-1]/(double)(j-1)), gm);
     }
     prob = prob/sum(prob);
@@ -246,8 +292,10 @@ void DBCD::adapt(int j, IntegerVector N) {
   else {
     prob = rho;
   }
-  set_rand_probability(j, prob);
+  treatment_ = sample(seq_len(get_number_of_treatments()), prob);
   
+  set_treatment(j, treatment_);
+  set_rand_probability(j, prob);
 }
 
 
@@ -256,20 +304,28 @@ void DBCD::adapt(int j, IntegerVector N) {
 MinQD::MinQD(NumericVector parameters_, IntegerVector fixed_allocation_ratio_, int number_of_subjects_):
   RR(parameters_, fixed_allocation_ratio_, number_of_subjects_) {}
 
-void MinQD::adapt(int j, IntegerVector N){
-  NumericVector w = as<NumericVector>(get_fixed_allocation_ratio());// fixed allocation ratio
-  int number_of_treatments = w.size();                              // number of treatments
-  double eta = get_parameters()[0] ;                                // MinQD has one parameter (eta)
-  NumericVector rho = w/sum(w);                                     // target allocation 
+void MinQD::randomize(int j, IntegerVector N){
+  // fixed allocation ratio
+  NumericVector w = as<NumericVector>(get_fixed_allocation_ratio());
+  
+  // MinQD has one parameter (eta)
+  double eta = get_parameters()[0] ;
+  
+  // current alloction probabilities
+  NumericVector prob(get_number_of_treatments());
+  
+  int treatment_;
+  
+  // target allocation 
+  NumericVector rho = w/sum(w);                                     
 
   double mu;
-  NumericVector prob(number_of_treatments);
 
   // the hypothetical "lack of balance"
-  NumericVector B(number_of_treatments);
+  NumericVector B(get_number_of_treatments());
 
   // set randomization probabilities based on current allocation ratio (N)
-  for (int k = 1; k <= number_of_treatments; k++) {
+  for (int k = 1; k <= get_number_of_treatments(); k++) {
     // hypothetical imbalance if a subject is assigned to a treatment k
     IntegerVector N1(N.size());
     N1[k-1] += 1;
@@ -280,10 +336,12 @@ void MinQD::adapt(int j, IntegerVector N){
     prob = rho;
   }
   else {
-    mu = 2/((number_of_treatments-1)*var(B))*eta*(sum(B*rho)-min(B));
+    mu = 2/((get_number_of_treatments()-1)*var(B))*eta*(sum(B*rho)-min(B));
     prob = rho-0.5*mu*(B-mean(B));
   }
-
+  treatment_ = sample(seq_len(get_number_of_treatments()), prob);
+  
+  set_treatment(j, treatment_);
   set_rand_probability(j, prob);
 };
 
@@ -293,21 +351,29 @@ void MinQD::adapt(int j, IntegerVector N){
 MaxEnt::MaxEnt(NumericVector parameters_, IntegerVector fixed_allocation_ratio_, int number_of_subjects_):
   RR(parameters_, fixed_allocation_ratio_, number_of_subjects_) {}
 
-void MaxEnt::adapt(int j, IntegerVector N){
-  NumericVector w = as<NumericVector>(get_fixed_allocation_ratio());// fixed allocation ratio
-  int number_of_treatments = w.size();                              // number of treatments
-  double eta = get_parameters()[0] ;                                // MinQD has one parameter (eta)
-  NumericVector rho = w/sum(w);                                     // target allocation 
+void MaxEnt::randomize(int j, IntegerVector N){
+  // fixed allocation ratio
+  NumericVector w = as<NumericVector>(get_fixed_allocation_ratio());
+  
+  // MaxEnt has one parameter (eta)
+  double eta = get_parameters()[0] ;           
+  
+  // current alloction probabilities
+  NumericVector prob(get_number_of_treatments());
+  
+  int treatment_;
+  
+  // target allocation 
+  NumericVector rho = w/sum(w);                                     
 
   double mu;
-  NumericVector prob(number_of_treatments);
-  
+
   // the hypothetical "lack of balance"
-  NumericVector B(number_of_treatments);
+  NumericVector B(get_number_of_treatments());
 
   // compute randomization probabilities based on current allocation ratio (N)
-  NumericVector num(number_of_treatments);
-  for (int k = 1; k <= number_of_treatments; k++) {
+  NumericVector num(get_number_of_treatments());
+  for (int k = 1; k <= get_number_of_treatments(); k++) {
     // hypothetical imbalance if a subject is assigned to a treatment k
     IntegerVector N1(N.size());
     N1[k-1] += 1;
@@ -326,11 +392,13 @@ void MaxEnt::adapt(int j, IntegerVector N){
       return min(B)*eta + (1-eta)*sum(rho*B) - sum(B*rho*exp(-mu*B))/sum(rho*exp(-mu*B));
     };
     
-    mu = bisection(fcn, 0, 20/max(B), 1e-5);
-      
+    //mu = bisection(fcn, 0, 100/max(B), 1e-5);
+    mu = secant(fcn, 0, 1, 1e-5);
     prob = rho*exp(-mu*B)/sum(rho*exp(-mu*B));
   }
-
+  treatment_ = sample(seq_len(get_number_of_treatments()), prob);
+  
+  set_treatment(j, treatment_);
   set_rand_probability(j, prob);
 };
 
