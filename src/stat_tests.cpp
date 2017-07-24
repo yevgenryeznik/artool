@@ -35,7 +35,7 @@ int anova_test(NumericMatrix obs, int K, double alpha = 0.05){
     SS[k-1] = sum(Rcpp::pow(as<NumericVector>(Y[trt == k])-Y_mean[k-1], 2));
     n[k-1] = as<NumericVector>(Y[trt == k]).length();
   }
-  if (is_true(any(n < 2))){
+  if (is_true(any(n < K))){
     return R_NaInt;
   }
   else {

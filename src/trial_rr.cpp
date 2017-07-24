@@ -10,7 +10,6 @@ private:
   int number_of_treatments;             // number of treatment groups
   int number_of_subjects;               // number of subjects involved in a trial
   int number_of_simulations;            // number of trial simulations
-  int cohort_size;                      // cohort size
   List resp_distribution;               // List represents response distribution with the followng items:
                                         //  name -- string with distribution name
                                         //  parameters -- list of numeric vectors of response parameters
@@ -28,6 +27,7 @@ private:
   
   // simulations outcome
   List rand_probability;                // list of matrices with randomization probabilities
+  List proportions;                     // list of matrices with allocation proportions
   NumericMatrix response;               // matrix of subjects' responses
   IntegerMatrix treatment;              // matrix of treatment assignments
   NumericMatrix forcing_idx;            // matrix of forcing indicies
@@ -43,19 +43,18 @@ public:
           int cohort_size_,
           List resp_distribution_,
           List rr_procedure_, 
-          double significance_level_, 
-          bool time_drift_):
+          double significance_level_):
 
     fixed_allocation_ratio(fixed_allocation_ratio_),
     number_of_treatments(fixed_allocation_ratio_.size()),
     number_of_subjects(number_of_subjects_),
     number_of_simulations(number_of_simulations_),
-    cohort_size(cohort_size_), 
     significance_level(significance_level_),
-    time_drift(time_drift_)
+    time_drift(false)
+    
     {
 
-    // initialize resp object and related fields
+    // initialize response object and related fields
     resp_distribution = resp_distribution_;
     string resp_distribution_name = resp_distribution_["name"];
     NumericMatrix resp_parameters = resp_distribution_["parameters"];
@@ -79,28 +78,28 @@ public:
     NumericVector rr_procedure_parameters = rr_procedure_["parameters"];
     
     if (rr_procedure_name == "CRD") {
-      rr = new CRD(rr_procedure_parameters, fixed_allocation_ratio_);
+      rr = new CRD(rr_procedure_parameters, fixed_allocation_ratio_, number_of_subjects_);
     }
     else if (rr_procedure_name == "PBD") {
-      rr = new PBD(rr_procedure_parameters, fixed_allocation_ratio_);
+      rr = new PBD(rr_procedure_parameters, fixed_allocation_ratio_, number_of_subjects_);
     }
     else if (rr_procedure_name == "BUD") {
-      rr = new BUD(rr_procedure_parameters, fixed_allocation_ratio_);
+      rr = new BUD(rr_procedure_parameters, fixed_allocation_ratio_, number_of_subjects_);
     }
     else if (rr_procedure_name == "MWUD") {
-      rr = new MWUD(rr_procedure_parameters, fixed_allocation_ratio_);
+      rr = new MWUD(rr_procedure_parameters, fixed_allocation_ratio_, number_of_subjects_);
     }
     else if (rr_procedure_name == "DL") {
-      rr = new DL(rr_procedure_parameters, fixed_allocation_ratio_);
+      rr = new DL(rr_procedure_parameters, fixed_allocation_ratio_, number_of_subjects_);
     }
     else if (rr_procedure_name == "DBCD") {
-      rr = new DBCD(rr_procedure_parameters, fixed_allocation_ratio_);
+      rr = new DBCD(rr_procedure_parameters, fixed_allocation_ratio_, number_of_subjects_);
     }
     else if (rr_procedure_name == "MinQD") {
-      rr = new MinQD(rr_procedure_parameters, fixed_allocation_ratio_);
+      rr = new MinQD(rr_procedure_parameters, fixed_allocation_ratio_, number_of_subjects_);
     }
     else if (rr_procedure_name == "MaxEnt") {
-      rr = new MaxEnt(rr_procedure_parameters, fixed_allocation_ratio_);
+      rr = new MaxEnt(rr_procedure_parameters, fixed_allocation_ratio_, number_of_subjects_);
     }
     else {
       throw invalid_argument("Inappropriate name of randomization procedure");
@@ -108,6 +107,7 @@ public:
 
     // initialize output characteristics
     rand_probability = List(number_of_simulations_);
+    proportions = List(number_of_simulations_);
     response = NumericMatrix(number_of_simulations_, number_of_subjects_);
     treatment = IntegerMatrix(number_of_simulations_,number_of_subjects_);
     forcing_idx = NumericMatrix(number_of_simulations_, number_of_subjects_);
@@ -123,7 +123,6 @@ public:
   int get_number_of_treatments()             { return( number_of_treatments ); }
   int get_number_of_subjects()               { return( number_of_subjects ); }
   int get_number_of_simulations()            { return( number_of_simulations ); }
-  int get_cohort_size()                      { return( cohort_size ); }
   string get_resp_distribution()             { return( resp_distribution["name"] ); }
   NumericMatrix get_resp_parameters()        { return( resp_distribution["parameters"] ); }
   string get_rr_procedure()                  { return( rr_procedure["name"] ); }
@@ -132,6 +131,7 @@ public:
   bool get_time_drift()                      { return( time_drift ); }
   
   List get_rand_probability()                { return( rand_probability ); }
+  List get_proportions()                     { return( proportions ); }
   NumericMatrix get_response()               { return( response ); }
   IntegerMatrix get_treatment()              { return( treatment ); }
   NumericMatrix get_forcing_idx()            { return( forcing_idx); }
@@ -140,45 +140,23 @@ public:
   IntegerMatrix get_reject()                 { return( reject ); }
 
   // setters
-  void set_response(int s, int j, double response_) { response(s-1,j-1) = response_; }
-  void set_treatment(int s, int j, int treatment_)  { treatment(s-1, j-1) = treatment_; }
-  void set_forcing_idx(int s, int j, double forcing_index_) { forcing_idx(s-1, j-1) = forcing_index_; }
-  void set_imbalance(int s, int j, double imbalance_)  { imbalance(s-1, j-1) = imbalance_; }
-  void set_selection_bias(int s, int j, double selection_bias_)  { selection_bias(s-1, j-1) = selection_bias_; }
+  void set_significance_level(double significance_level_) { significance_level = significance_level_; }
+  void set_time_drift(bool time_drift_) { time_drift = time_drift_; }
+  void set_response(int s, NumericVector response_) { response.row(s-1) = response_; }
+  void set_treatment(int s, IntegerVector treatment_)  { treatment.row(s-1) = treatment_; }
+  void set_forcing_idx(int s, NumericVector forcing_index_) { forcing_idx.row(s-1) = forcing_index_; }
+  void set_imbalance(int s, NumericVector imbalance_)  { imbalance.row(s-1) = imbalance_; }
+  void set_selection_bias(int s, NumericVector selection_bias_)  { selection_bias.row(s-1) = selection_bias_; }
   void set_reject(int s, int j, int reject_)  { reject(s-1, j-1) = reject_; }
-
-  // treatment assignment
-  int assign(int j, NumericVector prob) {
-    NumericVector cumulative_prob(number_of_treatments+1);
-    double u = runif(1)[0];
-    int k;
-
-    for (k = 1; k <= number_of_treatments; k++) {
-      cumulative_prob[k] = cumulative_prob[k-1] + prob[k-1];
-      if (cumulative_prob[k-1] < u && u < cumulative_prob[k]) {
-        break;
-      }
-    }
-    return k;
-  }
-
 
   // simulation of a single trial (with a number s)
   void simulate_trial(int s) {
     IntegerVector treatments = seq_len(number_of_treatments);
-    int treatment_;
     double response_;
-    double forcing_idx_;
-    double imbalance_;
-    double selection_bias_;
     int reject_;
     NumericMatrix obs(number_of_subjects, 2);
 
-    NumericMatrix prob = NumericMatrix(number_of_subjects, number_of_treatments);
-    IntegerVector N(number_of_treatments);
-    NumericVector rho = get_target_allocation();
-    NumericVector fi(number_of_subjects);
-    IntegerVector guess(number_of_subjects);
+    rr->randomize();
     
     for ( int j = 1; j <= number_of_subjects; j++ ) {
       // adaptation
@@ -198,22 +176,6 @@ public:
       
       obs.row(j-1) = NumericVector::create(treatment_, response_);
       
-      // imbalance 
-      N[treatment_-1] += 1;
-      imbalance_ = sqrt((float)sum(Rcpp::pow(as<NumericVector>(N) - j*rho, 2)))/j;
-      set_imbalance(s, j, imbalance_);
-      
-      // forcing index
-      fi(j-1) = sum(Rcpp::pow(prob.row(j-1)-rho, 2));
-      forcing_idx_ = sum(fi[seq(0, j-1)])/j;
-      set_forcing_idx(s, j, forcing_idx_);
-      
-      // sequential bias
-      if (prob(j-1, treatment_-1) == Rcpp::max(prob.row(j-1))) {
-        guess(j-1) = 1;
-      }
-      selection_bias_ = (double)sum(guess[seq(0, j-1)])/j;  
-      set_selection_bias(s, j, selection_bias_);
       
 
       // test null hypothesis
@@ -222,6 +184,7 @@ public:
 
     }
     rand_probability[s-1] = prob;
+    proportions[s-1] = prop;
   }
 
 
@@ -237,7 +200,9 @@ public:
 RCPP_MODULE(trial) {
 
   class_<TrialRR>("TrialRR")
-  .constructor<IntegerVector,int,int,int,List,List,double,bool>()
+  .constructor<IntegerVector,int,int,int,List,List,double>()
+  .method("set_significance_level", &TrialRR::set_significance_level)
+  .method("set_time_drift", &TrialRR::set_time_drift)
   .method("simulate_trial", &TrialRR::simulate_trial)
   .method("simulate", &TrialRR::simulate)
   .property("fixedAllocationRatio", &TrialRR::get_fixed_allocation_ratio)
@@ -253,6 +218,7 @@ RCPP_MODULE(trial) {
   .property("significance_level", &TrialRR::get_significance_level)
   .property("time_drift", &TrialRR::get_time_drift)
   .property("randomizationProbability", &TrialRR::get_rand_probability)
+  .property("allocationProportion", &TrialRR::get_proportions)
   .property("response", &TrialRR::get_response)
   .property("treatment", &TrialRR::get_treatment)
   .property("forcing_idx", &TrialRR::get_forcing_idx)
