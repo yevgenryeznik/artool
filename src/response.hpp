@@ -1,3 +1,6 @@
+// file contains definitions of functions simulating different responses
+// given parametric diftribution and treatment assignments
+
 // [[Rcpp::plugins(cpp11)]]
 #include <Rcpp.h>
 #include <algorithm>
@@ -6,53 +9,35 @@ using namespace Rcpp;
 using namespace std;
 
 
-// Response class
-class Response {
-private:
-  NumericMatrix parameters; // vector of Response parameters
-
-public:
-
-  // constructor of AR class
-  Response(NumericMatrix);
+// binary response
+NumericVector response_binary(IntegerVector, List);
 
 
-  // getters
-  NumericMatrix get_parameters()  const;
-
-  // setters
-  void set_parameters(NumericMatrix);
+// uniform response
+NumericVector response_uniform(IntegerVector, List);
 
 
-  // function which generates response(s):
-  //  inputs:
-  //    int -- a size of the cohort of patients for which responses are generated
-  virtual double response(int) = 0;
-};
+// normal response
+NumericVector response_normal(IntegerVector, List);
 
 
-
-// Binary Response
-class BinaryResponse: public Response {
-public:
-  BinaryResponse(NumericMatrix);
-  double response(int);
-};
+// exponential response
+NumericVector response_exp(IntegerVector, List);
 
 
-
-// Normally Distributed Response
-class NormalResponse: public Response {
-public:
-  NormalResponse(NumericMatrix);
-  double response(int);
-};
+// weibull response
+NumericVector response_weibull(IntegerVector, List);
 
 
+// log-logistic response
+NumericVector response_loglog(IntegerVector, List);
 
-// Weibully Distributed Response
-class WeibullResponse: public Response {
-public:
-  WeibullResponse(NumericMatrix);
-  double response(int);
-};
+
+// log-normal response
+NumericVector response_lognormal(IntegerVector, List);
+
+
+// set response function given 
+//    distribution -- response distribution
+//    parameter -- List with response distribution parameter(s) values
+std::function<NumericVector (IntegerVector)> set_response_function(std::string, List);
