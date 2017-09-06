@@ -1,24 +1,11 @@
 // A file contains implementation of functions providing Restricted Randomization procedures 
 // targeting unequal allocation
 
-#include "rr1.hpp"
-#include "response1.hpp"
+#include "restricted.hpp"
+#include "response.hpp"
 #include "algorithms.hpp"
-#include "stat_tests.hpp"
+#include "statistics.hpp"
 
-// sample an integer from a set of integers
-int sample(IntegerVector range, NumericVector prob) {
-  NumericVector cumulative_prob(prob.size()+1);
-  double u = runif(1)[0];
-  int k;
-  for (k = 1; k <= prob.size(); k++) {
-    cumulative_prob[k] = cumulative_prob[k-1] + prob[k-1];
-    if (cumulative_prob[k-1] < u && u < cumulative_prob[k]) {
-      break;
-    }
-  }
-  return range[k-1];
-}
 
 // functions below compute randomization probabilities given
 //    j -- current subkect's ID
