@@ -31,25 +31,3 @@ double bisection(std::function<double (double)> fcn, double low, double upp, dou
   }
 }
 
-// Newthon method to find a root of a function over interval
-double newthon(std::function<double (double)> fcn, std::function<double (double)> fcn1, double x0, double tol){
-  double x1 = x0;
-  while (abs(fcn(x1)) > tol) {
-    x1 -= fcn(x1)/fcn1(x1);
-  }
-  return(x1);
-}
-
-
-// Secant method to find a root of a function over interval
-double secant(std::function<double (double)> fcn, double x1, double x2, double tol){
-  double x3 = x2 - fcn(x2)*(x2-x1)/(fcn(x2)-fcn(x1));
-  while (abs(fcn(x3)) > tol) {
-    x1 = x2;
-    x2 = x3;
-    x3 = x2 - fcn(x2)*(x2-x1)/(fcn(x2)-fcn(x1));
-  }
-  return(x3);
-}
-
-
