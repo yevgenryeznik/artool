@@ -345,13 +345,6 @@ List restricted(int number_of_subjects, IntegerVector w, std::string procedure, 
   
   response = response_function(treatment);
   
-  // IntegerVector subject = seq_len(number_of_subjects);
-  // for_each(subject.begin(), subject.end(), [&reject, treatment, response, number_of_treatments, alpha](int &j){
-  //   Range idx = seq(0, j-1);
-  //   reject[j-1] = anova_test(treatment[idx], response[idx], number_of_treatments, alpha);
-  // });
-  
-
   return List::create(_["treatment"] = treatment,
                       _["response"] = response,
                       _["reject"] = reject,
