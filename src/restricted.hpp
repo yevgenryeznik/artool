@@ -8,8 +8,6 @@
 using namespace Rcpp;
 using namespace std;
 
-// sample an integer from a set of integers, given probabilities
-int sample(IntegerVector, NumericVector);
 
 // functions below compute randomization probabilities given
 //    int (j) -- current subkect's ID

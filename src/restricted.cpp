@@ -266,8 +266,8 @@ std::function<List (int, IntegerVector)> set_rand_procedure(IntegerVector w, std
 
 // randomization procedure
 //[[Rcpp::export]]
-List run_rr(int number_of_subjects, IntegerVector w, std::string procedure, double p, 
-            std::string response_distr, List response_parameter, double alpha){
+List restricted(int number_of_subjects, IntegerVector w, std::string procedure, double p, 
+            std::string distribution, List parameter, double alpha){
   int number_of_treatments = w.size();
   IntegerVector k = seq_len(number_of_treatments);
 
@@ -301,7 +301,8 @@ List run_rr(int number_of_subjects, IntegerVector w, std::string procedure, doub
   NumericVector forcing_index(number_of_subjects);
 
   // momentum of probability mass
-  NumericVector mpm(number_of_subjects);
+  NumericVector mpm1(number_of_subjects);
+  NumericVector mpm2(number_of_subjects);
 
   // List with current assignment
   List assignment;
@@ -312,7 +313,7 @@ List run_rr(int number_of_subjects, IntegerVector w, std::string procedure, doub
 
   // response function
   std::function<NumericVector (IntegerVector)> response_function = 
-    set_response_function(response_distr, response_parameter);
+    set_response_function(distribution, parameter);
   
   
   for(int j = 1; j <= number_of_subjects; j++) {
@@ -336,7 +337,8 @@ List run_rr(int number_of_subjects, IntegerVector w, std::string procedure, doub
     // momentum of probability mass
     for (int k = 1; k <= number_of_treatments; k++) {
       N1[k-1] += 1;
-      mpm[j-1] += probability.row(j-1)[k-1]*sqrt((float)sum(Rcpp::pow(as<NumericVector>(N1) - j*rho, 2)));
+      mpm1[j-1] += probability.row(j-1)[k-1]*sqrt((float)sum(Rcpp::pow(as<NumericVector>(N1) - j*rho, 2)));
+      mpm2[j-1] = imbalance[j-1]*j;
       N1[k-1] -= 1;
     }
   }  
@@ -355,7 +357,8 @@ List run_rr(int number_of_subjects, IntegerVector w, std::string procedure, doub
                       _["reject"] = reject,
                       _["imbalance"] = imbalance,
                       _["forcing_index"] = forcing_index,
-                      _["mpm"] = mpm, 
+                      _["mpm1"] = mpm1, 
+                      _["mpm2"] = mpm2, 
                       _["probability"] = probability, 
                       _["proportion"] = proportion);
 }
