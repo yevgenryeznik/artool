@@ -5,11 +5,54 @@
 
 using namespace Rcpp;
 
-
-RcppExport SEXP _rcpp_module_boot_trial();
+// restricted
+List restricted(int number_of_subjects, IntegerVector w, std::string procedure, double p, std::string distribution, List parameter);
+RcppExport SEXP artool_restricted(SEXP number_of_subjectsSEXP, SEXP wSEXP, SEXP procedureSEXP, SEXP pSEXP, SEXP distributionSEXP, SEXP parameterSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type number_of_subjects(number_of_subjectsSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type w(wSEXP);
+    Rcpp::traits::input_parameter< std::string >::type procedure(procedureSEXP);
+    Rcpp::traits::input_parameter< double >::type p(pSEXP);
+    Rcpp::traits::input_parameter< std::string >::type distribution(distributionSEXP);
+    Rcpp::traits::input_parameter< List >::type parameter(parameterSEXP);
+    rcpp_result_gen = Rcpp::wrap(restricted(number_of_subjects, w, procedure, p, distribution, parameter));
+    return rcpp_result_gen;
+END_RCPP
+}
+// t_test
+int t_test(NumericVector x, NumericVector y, double alpha);
+RcppExport SEXP artool_t_test(SEXP xSEXP, SEXP ySEXP, SEXP alphaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
+    rcpp_result_gen = Rcpp::wrap(t_test(x, y, alpha));
+    return rcpp_result_gen;
+END_RCPP
+}
+// anova_test
+int anova_test(IntegerVector treatment, NumericVector response, int K, double alpha);
+RcppExport SEXP artool_anova_test(SEXP treatmentSEXP, SEXP responseSEXP, SEXP KSEXP, SEXP alphaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< IntegerVector >::type treatment(treatmentSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type response(responseSEXP);
+    Rcpp::traits::input_parameter< int >::type K(KSEXP);
+    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
+    rcpp_result_gen = Rcpp::wrap(anova_test(treatment, response, K, alpha));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_rcpp_module_boot_trial", (DL_FUNC) &_rcpp_module_boot_trial, 0},
+    {"artool_restricted", (DL_FUNC) &artool_restricted, 6},
+    {"artool_t_test", (DL_FUNC) &artool_t_test, 3},
+    {"artool_anova_test", (DL_FUNC) &artool_anova_test, 4},
     {NULL, NULL, 0}
 };
 

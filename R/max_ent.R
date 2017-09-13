@@ -28,34 +28,6 @@ bisection <- function(fun, low, upp, tol = 1e-5) {
   }
 }
 
-# Newthon method
-newthon <- function(fcn, fcn1, x0, tol = 1e-5){
-  x1 <- x0
-  while (abs(fcn(x1)) > tol) {
-    
-    x1 <- x1 - fcn(x1)/fcn1(x0)
-    print(c(x1, fcn(x1), fcn1(x1), fcn(x1)/fcn1(x1)))
-  }
-  print(c("stop", paste(", x1 = ", x1)))
-  return(x1)
-}
-
-
-
-# secant method
-secant <- function(fcn, x1, x2, tol = 1e-5){
-  x3 <- x2-fcn(x2)*(x2-x1)/(fcn(x2)-fcn(x1))
-  while (abs(fcn(x3)) > tol && abs(x2-x1) > tol) {
-    
-    x1 <- x2
-    x2 <- x3
-    x3 <- x2-fcn(x2)*(x2-x1)/(fcn(x2)-fcn(x1))
-    print(c(x1, x2, x3, fcn(x3)))
-  }
-  print(c("stop", paste(", x = ", x3)))
-  return(x3)
-}
-
 
 #' Maximum Entropy Constrained Balance Design (MaxEnt(eta))
 # @param w fixed allocation ration (target)
@@ -94,19 +66,23 @@ max_ent <- function(w, eta, nsbj) {
     else {
       # we have to find a zero of a one-variable (mu) function.
       # bisection method is used
-
-      fcn <- function(mu) {
-        min(B)*eta + (1-eta)*sum(rho*B) - sum(B*rho*exp(-mu*B))/sum(rho*exp(-mu*B))
+      if (eta != 1) {
+        fcn <- function(mu) {
+          min(B)*eta + (1-eta)*sum(rho*B) - sum(B*rho*exp(-mu*B))/sum(rho*exp(-mu*B))
+        }
+        mu <- bisection(fcn, 0, 50/max(B))
+        prob[j,] <- rho*exp(-mu*B)/sum(rho*exp(-mu*B))
       }
-      
-      fcn1 <- function(mu) {
-        (sum(B*B*rho*exp(-mu*B))*sum(rho*exp(-mu*B)) - sum(B*rho*exp(-mu*B))^2)/
-          sum(rho*exp(-mu*B))^2
+      else {
+        prob[j,] <- unlist(lapply(seq_len(ntrt), function(j, B, rho, prob){
+          if (B[j] > min(B)) {
+            return(0)
+          }
+          else{
+            return(rho[j]/sum(rho[B == min(B)]))
+          }
+        }, B, rho))
       }
-      # mu <- bisection(fcn, 0, 1000/max(B))
-      # mu <- newthon(fcn, fcn1, 0)
-      mu <- secant(fcn, 0, 1)
-      prob[j,] <- rho*exp(-mu*B)/sum(rho*exp(-mu*B))
     }
     trt[j] <- sample(seq_len(ntrt), 1, TRUE, prob[j,])
     N[trt[j]] <- N[trt[j]] + 1

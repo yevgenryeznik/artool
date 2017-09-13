@@ -185,22 +185,26 @@ List max_ent(int j, IntegerVector N, IntegerVector w, double p){
     N1[k-1] -= 1;
   }); 
   
-  if (var(B) <= 1e-16) {
-    prob = rho;
+  if (p != 1) {
+    if (var(B) <= 1e-16) {
+      prob = rho;
+    }
+    else {
+      // we have to find a zero of a one-variable (mu) function.
+      // bisection method is used -- implemeted in the file algorithms.cpp
+      
+      // function to find zero of
+      std::function<double (double)> fcn = [p, B, rho](double mu) {
+        return min(B)*p + (1-p)*sum(rho*B) - sum(B*rho*exp(-mu*B))/sum(rho*exp(-mu*B));
+      };
+      
+      double mu = bisection(fcn, 0, 100/max(B), 1e-5);
+      prob = rho*exp(-mu*B)/sum(rho*exp(-mu*B));
+    }
   }
   else {
-    // we have to find a zero of a one-variable (mu) function.
-    // bisection method is used -- implemeted in the file algorithms.cpp
-    
-    // function to find zero of
-    std::function<double (double)> fcn = [p, B, rho](double mu) {
-      return min(B)*p + (1-p)*sum(rho*B) - sum(B*rho*exp(-mu*B))/sum(rho*exp(-mu*B));
-    };
-    
-    double mu = bisection(fcn, 0, 50/max(B), 1e-5);
-    //double mu = secant(fcn, 0, 100/max(B), 1e-5);
-    //double mu = fixed_point(fcn, 1500, 1, 1e-5);
-    prob = rho*exp(-mu*B)/sum(rho*exp(-mu*B));
+    prob[B == min(B)] = rho[B == min(B)];
+    prob = prob/(double)sum(prob);
   }
   int trt = sample(k, prob);
   
@@ -236,8 +240,9 @@ std::function<List (int, IntegerVector)> set_rand_procedure(IntegerVector w, std
     };
   }
   else if (procedure == "DL") {   // Drop-the-Loser
-    IntegerVector urn = seq_len(w.size()+1)-1;
+    IntegerVector urn(w.size()+1);
     urn[0] = 1;
+    urn[seq(1, w.size())] = w;
     fcn = [w, p, urn](int j, IntegerVector N){
       return dl(j, N, w, p, urn);
     };
@@ -267,7 +272,7 @@ std::function<List (int, IntegerVector)> set_rand_procedure(IntegerVector w, std
 // randomization procedure
 //[[Rcpp::export]]
 List restricted(int number_of_subjects, IntegerVector w, std::string procedure, double p, 
-            std::string distribution, List parameter, double alpha){
+            std::string distribution, List parameter){
   int number_of_treatments = w.size();
   IntegerVector k = seq_len(number_of_treatments);
 

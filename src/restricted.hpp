@@ -52,8 +52,8 @@ List max_ent(int, IntegerVector, IntegerVector, double);
 std::function<List (int, IntegerVector)> set_rand_procedure(IntegerVector, std::string, double);
   
 
-// run randomization procedure
-List run_rr(int, IntegerVector, std::string, double, std::string, List, double);
+// run restricted randomization procedure
+List restricted(int, IntegerVector, std::string, double, std::string, List);
   
   
   
