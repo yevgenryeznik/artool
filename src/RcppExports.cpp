@@ -5,9 +5,22 @@
 
 using namespace Rcpp;
 
+// response
+NumericVector response(std::string distribution, List parameter, IntegerVector treatment);
+RcppExport SEXP _artool_response(SEXP distributionSEXP, SEXP parameterSEXP, SEXP treatmentSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type distribution(distributionSEXP);
+    Rcpp::traits::input_parameter< List >::type parameter(parameterSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type treatment(treatmentSEXP);
+    rcpp_result_gen = Rcpp::wrap(response(distribution, parameter, treatment));
+    return rcpp_result_gen;
+END_RCPP
+}
 // restricted
 List restricted(int number_of_subjects, IntegerVector w, std::string procedure, double p, std::string distribution, List parameter);
-RcppExport SEXP artool_restricted(SEXP number_of_subjectsSEXP, SEXP wSEXP, SEXP procedureSEXP, SEXP pSEXP, SEXP distributionSEXP, SEXP parameterSEXP) {
+RcppExport SEXP _artool_restricted(SEXP number_of_subjectsSEXP, SEXP wSEXP, SEXP procedureSEXP, SEXP pSEXP, SEXP distributionSEXP, SEXP parameterSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -21,22 +34,39 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// t_test
-int t_test(NumericVector x, NumericVector y, double alpha);
-RcppExport SEXP artool_t_test(SEXP xSEXP, SEXP ySEXP, SEXP alphaSEXP) {
+// simulate_restricted
+List simulate_restricted(int number_of_simulations, int number_of_subjects, IntegerVector w, std::string procedure, double p, std::string distribution, List parameter);
+RcppExport SEXP _artool_simulate_restricted(SEXP number_of_simulationsSEXP, SEXP number_of_subjectsSEXP, SEXP wSEXP, SEXP procedureSEXP, SEXP pSEXP, SEXP distributionSEXP, SEXP parameterSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< int >::type number_of_simulations(number_of_simulationsSEXP);
+    Rcpp::traits::input_parameter< int >::type number_of_subjects(number_of_subjectsSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type w(wSEXP);
+    Rcpp::traits::input_parameter< std::string >::type procedure(procedureSEXP);
+    Rcpp::traits::input_parameter< double >::type p(pSEXP);
+    Rcpp::traits::input_parameter< std::string >::type distribution(distributionSEXP);
+    Rcpp::traits::input_parameter< List >::type parameter(parameterSEXP);
+    rcpp_result_gen = Rcpp::wrap(simulate_restricted(number_of_simulations, number_of_subjects, w, procedure, p, distribution, parameter));
+    return rcpp_result_gen;
+END_RCPP
+}
+// t_test
+int t_test(IntegerVector treatment, NumericVector response, double alpha);
+RcppExport SEXP _artool_t_test(SEXP treatmentSEXP, SEXP responseSEXP, SEXP alphaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< IntegerVector >::type treatment(treatmentSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type response(responseSEXP);
     Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
-    rcpp_result_gen = Rcpp::wrap(t_test(x, y, alpha));
+    rcpp_result_gen = Rcpp::wrap(t_test(treatment, response, alpha));
     return rcpp_result_gen;
 END_RCPP
 }
 // anova_test
 int anova_test(IntegerVector treatment, NumericVector response, int K, double alpha);
-RcppExport SEXP artool_anova_test(SEXP treatmentSEXP, SEXP responseSEXP, SEXP KSEXP, SEXP alphaSEXP) {
+RcppExport SEXP _artool_anova_test(SEXP treatmentSEXP, SEXP responseSEXP, SEXP KSEXP, SEXP alphaSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -50,9 +80,11 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"artool_restricted", (DL_FUNC) &artool_restricted, 6},
-    {"artool_t_test", (DL_FUNC) &artool_t_test, 3},
-    {"artool_anova_test", (DL_FUNC) &artool_anova_test, 4},
+    {"_artool_response", (DL_FUNC) &_artool_response, 3},
+    {"_artool_restricted", (DL_FUNC) &_artool_restricted, 6},
+    {"_artool_simulate_restricted", (DL_FUNC) &_artool_simulate_restricted, 7},
+    {"_artool_t_test", (DL_FUNC) &_artool_t_test, 3},
+    {"_artool_anova_test", (DL_FUNC) &_artool_anova_test, 4},
     {NULL, NULL, 0}
 };
 
