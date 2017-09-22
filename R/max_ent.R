@@ -29,7 +29,7 @@ bisection <- function(fun, low, upp, tol = 1e-5) {
 }
 
 
-#' Maximum Entropy Constrained Balance Design (MaxEnt(eta))
+# Maximum Entropy Constrained Balance Design (MaxEnt(eta))
 # @param w fixed allocation ration (target)
 # @param eta paraemters of the procedure (0 <= eta <= 1)
 # @param nsbj number of subjects to randomize
@@ -91,7 +91,7 @@ max_ent <- function(w, eta, nsbj) {
 }
 
 
-#' function to plot allocation probabilities vs number of subjects
+# function to plot allocation probabilities vs number of subjects
 # @param prob matrix of the allocation probabilities
 visualize_prob <- function(prob) {
   prob_df <- bind_cols(sbj = seq_len(nrow(prob)), as_data_frame(prob))
