@@ -269,8 +269,8 @@ std::function<List (int, IntegerVector)> set_rand_procedure(IntegerVector w, std
 }
 
 
-// randomization procedure
-//[[Rcpp::export]]
+// restricted randomization procedure
+//[[Rcpp::export(.restricted)]]
 List restricted(int number_of_subjects, IntegerVector w, std::string procedure, double p, 
             std::string distribution, List parameter){
   int number_of_treatments = w.size();
@@ -287,16 +287,13 @@ List restricted(int number_of_subjects, IntegerVector w, std::string procedure, 
   NumericMatrix probability(number_of_subjects, number_of_treatments);
 
   // matrix of allocation proportions
-  NumericMatrix proportion(number_of_subjects, number_of_treatments);
+  NumericMatrix allocation(number_of_subjects, number_of_treatments);
 
   // treatment assignments
   IntegerVector treatment(number_of_subjects);
 
   // responses
   NumericVector response(number_of_subjects);
-  
-  // H0 rejects
-  IntegerVector reject(number_of_subjects);
   
   // imbalance
   NumericVector imbalance(number_of_subjects);
@@ -306,7 +303,10 @@ List restricted(int number_of_subjects, IntegerVector w, std::string procedure, 
   NumericVector forcing_index(number_of_subjects);
 
   // momentum of probability mass
+  NumericVector mpm1_(number_of_subjects);
   NumericVector mpm1(number_of_subjects);
+  
+  NumericVector mpm2_(number_of_subjects);
   NumericVector mpm2(number_of_subjects);
 
   // List with current assignment
@@ -330,11 +330,13 @@ List restricted(int number_of_subjects, IntegerVector w, std::string procedure, 
     N[treatment[j-1]-1] += 1;
 
     // allocation proportion
-    proportion.row(j-1) = as<NumericVector>(N)/sum(N);
+    allocation.row(j-1) = as<NumericVector>(N)/sum(N);
 
     // imbalance
     imbalance[j-1] = sqrt((float)sum(Rcpp::pow(as<NumericVector>(N) - j*rho, 2)))/j;
-
+    mpm2_[j-1] = imbalance[j-1]*j;
+    mpm2[j-1] = mean(mpm2_[seq(0, j-1)]);
+    
     // forcing index
     fi[j-1] = sum(Rcpp::pow(probability.row(j-1)-rho, 2));
     forcing_index[j-1] = mean(fi[seq(0, j-1)]);
@@ -342,27 +344,110 @@ List restricted(int number_of_subjects, IntegerVector w, std::string procedure, 
     // momentum of probability mass
     for (int k = 1; k <= number_of_treatments; k++) {
       N1[k-1] += 1;
-      mpm1[j-1] += probability.row(j-1)[k-1]*sqrt((float)sum(Rcpp::pow(as<NumericVector>(N1) - j*rho, 2)));
-      mpm2[j-1] = imbalance[j-1]*j;
+      mpm1_[j-1] += probability.row(j-1)[k-1]*sqrt((float)sum(Rcpp::pow(as<NumericVector>(N1) - j*rho, 2)));
       N1[k-1] -= 1;
     }
+    mpm1[j-1] = mean(mpm1_[seq(0, j-1)]);
+    
   }  
   
   response = response_function(treatment);
   
   return List::create(_["treatment"] = treatment,
                       _["response"] = response,
-                      _["reject"] = reject,
-                      _["imbalance"] = imbalance,
-                      _["forcing_index"] = forcing_index,
-                      _["mpm1"] = mpm1, 
-                      _["mpm2"] = mpm2, 
+                      _["Imb"] = imbalance,
+                      _["FI"] = forcing_index,
+                      _["MPM1"] = mpm1, 
+                      _["MPM2"] = mpm2, 
                       _["probability"] = probability, 
-                      _["proportion"] = proportion);
+                      _["allocation"] = allocation);
 }
 
 
-
+// simulation of restricted randomization procedure
+//[[Rcpp::export(.simulate_restricted)]]
+List simulate_restricted(int number_of_simulations, 
+                         int number_of_subjects, 
+                         IntegerVector w, 
+                         std::string procedure, 
+                         double p, 
+                         std::string distribution, 
+                         List parameter) {
+  
+  IntegerMatrix treatment(number_of_simulations, number_of_subjects);
+  NumericMatrix response(number_of_simulations, number_of_subjects);
+  NumericMatrix Imb(number_of_simulations, number_of_subjects);
+  NumericMatrix FI(number_of_simulations, number_of_subjects);
+  NumericMatrix MPM1(number_of_simulations, number_of_subjects);
+  NumericMatrix MPM2(number_of_simulations, number_of_subjects);
+  NumericMatrix Prob(number_of_subjects, w.size());
+  List PropList(number_of_simulations);
+  
+  
+  
+  // run trial number_of_simulations times
+  IntegerVector simulations = seq_len(number_of_simulations)-1;
+  for_each(simulations.begin(), simulations.end(), 
+           [&treatment, &response, &Imb, &FI, &MPM1, &MPM2, &Prob, &PropList,
+            number_of_subjects, w, procedure, p, distribution, parameter](int &s){
+              
+              List trial = restricted(number_of_subjects, w, procedure, p, distribution, parameter);
+              
+              // treatment asignments within s-th simulation
+              treatment.row(s) = as<IntegerVector>(trial[0]); 
+              
+              // responses within s-th simulation
+              response.row(s) = as<NumericVector>(trial[1]); 
+              
+              // imbalances vs subject within s simulation
+              Imb.row(s) = as<NumericVector>(trial[2]);
+              
+              // forcing indecies vs subject within s simulation
+              FI.row(s) = as<NumericVector>(trial[3]);
+              
+              // momentum of probbaility mass vs subject within s-th simulation
+              MPM1.row(s) = as<NumericVector>(trial[4]); // Alex' approach
+              MPM2.row(s) = as<NumericVector>(trial[5]); // Olga's approach
+              
+              // unconditional allocation probability
+              IntegerVector trt = seq_len(w.size());
+              for_each(trt.begin(), trt.end(), [&Prob, trial](int k){
+                Prob.column(k-1) = Prob.column(k-1)+as<NumericMatrix>(trial[6]).column(k-1);
+              }); 
+              
+              
+              // allocation proportions
+              PropList[s] = as<NumericMatrix>(trial[7]);
+              
+            });
+  
+  // operating characteristics of the simulations
+  NumericVector MI(number_of_subjects);
+  NumericVector AFI(number_of_subjects);
+  NumericVector AMPM1(number_of_subjects);
+  NumericVector AMPM2(number_of_subjects);
+  
+  IntegerVector subject = seq_len(number_of_subjects);
+  for_each(subject.begin(), subject.end(), 
+           [Imb, FI, MPM1, MPM2, PropList, w, 
+            &MI, &AFI, &AMPM1, &AMPM2](int &j) {
+              MI[j-1] = max(Imb.column(j-1));          // maximum imbalance
+              AFI[j-1] = mean(FI.column(j-1));         // average FI
+              AMPM1[j-1] = mean(MPM1.column(j-1));     // average MPM1 (Alex' approach)
+              AMPM2[j-1] = mean(MPM2.column(j-1));     // average MPM2 (Olga's approach)
+            });
+  
+  
+  return List::create(_["treatment"] = treatment,
+                      _["response"] = response,
+                      _["MI"] = MI,
+                      _["AFI"] = AFI,
+                      _["AMPM1"] = AMPM1, 
+                      _["AMPM2"] = AMPM2,
+                      _["Probability"] = Prob/number_of_simulations, 
+                      _["Allocation"] = PropList);
+  
+}
 
 
 
