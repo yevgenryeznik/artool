@@ -10,7 +10,7 @@ int sample(IntegerVector, NumericVector);
   
 
 // t test
-int t_test(NumericVector, NumericVector, double);
+int t_test(IntegerVector, NumericVector, double);
 
 
 // anova test

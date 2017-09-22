@@ -17,8 +17,11 @@ int sample(IntegerVector range, NumericVector prob) {
 
 
 // t test
-//[[Rcpp::export]]
-int t_test(NumericVector x, NumericVector y, double alpha = 0.05){
+//[[Rcpp::export(.t_test)]]
+int t_test(IntegerVector treatment, NumericVector response, double alpha = 0.05){
+  NumericVector x = response[treatment == 1];
+  NumericVector y = response[treatment == 2];
+  
   if (x.length() < 2 or y.length() < 2){
     return R_NaReal;
   }
@@ -41,7 +44,7 @@ int t_test(NumericVector x, NumericVector y, double alpha = 0.05){
 }
 
 
-//[[Rcpp::export]]
+//[[Rcpp::export(.anova_test)]]
 int anova_test(IntegerVector treatment, NumericVector response, int K, double alpha = 0.05){
   NumericVector n(K);
   NumericVector SS(K);
