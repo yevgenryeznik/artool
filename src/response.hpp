@@ -41,3 +41,11 @@ NumericVector response_lognormal(IntegerVector, List);
 //    distribution -- response distribution
 //    parameter -- List with response distribution parameter(s) values
 std::function<NumericVector (IntegerVector)> set_response_function(std::string, List);
+
+
+// response function, given
+//  -- distribution name
+//  -- distribution params
+//  -- vector of treatment assignments
+NumericVector response(std::string, List, IntegerVector);
+  
