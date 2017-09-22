@@ -2,6 +2,12 @@
 #' @param nsim number of simulations
 
 run_example1 <- function(nsim) {
+  # number of simulations
+  nsim <- 10000
+  
+  # number of subjects
+  nsbj <- 200
+  
   # fixed allocation ratio
   w <- rbind(
     c( 1,  1,  1,  1),
@@ -10,19 +16,18 @@ run_example1 <- function(nsim) {
     c(37, 21, 21, 21)
   )
   
-  # number of subjects
-  nsbj <- 200
-  
   # number of treatments
   ntrt <- dim(w)[2] 
-    
+
   # randomization procedure(s)
-  proc <- list(
-    name = c("CRD",  rep("PBD", 5), rep("BUD", 4), rep("MWUD", 4), rep("DL", 4), rep("DBCD", 5), rep("MaxEnt", 5)),
-    param = c(NA, 1, 2, 3, 4, 5, 2, 3, 4, 5, 2, 4, 6, 8, 2, 4, 6, 8, 1, 2, 4, 5, 10, 0.05, 0.1, 0.25, 0.5, 1)
-    ) %>%
-    transpose()
-    
+  proc <- c("CRD",  rep("PBD", 5), rep("BUD", 4), rep("MWUD", 4), rep("DL", 4), rep("DBCD", 5), rep("MaxEnt", 5))
+  proc_param <- c(NA, 1, 2, 3, 4, 5, 2, 3, 4, 5, 2, 4, 6, 8, 2, 4, 6, 8, 1, 2, 4, 5, 10, 0.05, 0.1, 0.25, 0.5, 1)
+  
+  # response distribution
+  distr <- "normal"
+  distr_param_flat <- list(mean = rep(0, 4), sd = rep(1, 4))
+  distr_param_monotone <- list(mean = c(0, 0.2, 0.4, 0.6), sd = rep(1, 4))  
+  
   # significance level
   alpha <- 0.05
   
@@ -33,101 +38,38 @@ run_example1 <- function(nsim) {
                      )
   )
   
-  parameter <- list(c(0, 0.2, 0.4, 0.6), rep(1, 4))  
-  simulated_ex1 <- list()
+  example1 <- list()
   for(sc in seq_len(nrow(scenario))){
     target <- as.numeric(w[scenario[sc,"w_row"],])
-    rand <- proc[[scenario[sc,"proc_id"]]]
-    design = rand$name
-    procedure = if_else(design == "CRD", "CRD", paste0(design, " (", rand$param, ")"))
-    target_str = paste0("(", target[1], ",", target[2], ",", target[3], ",", target[4], ")")
-    cat(paste0("scenario # ", sc, " is being simulated: target = ", target_str, ", procedure = ", procedure, "\n"))
-    trial <- map(seq_len(nsim), ~ {
-      restricted(nsbj, target, rand$name, rand$param, "normal", list(rep(0, 4), rep(1, 4)))
-    })
+    proc_ <- proc[scenario[sc, "proc_id"]]
+    proc_param_ <- proc_param[scenario[sc, "proc_id"]]
+    procedure <- if_else(proc_ == "CRD", "CRD", paste0(proc_, " (", proc_param_, ")"))
+    cat(paste0("scenario # ", sc, " is being simulated: target = ", 
+               paste0("w = (", paste(target, collapse=","), ")"), 
+               ", procedure = ", procedure, "\n"))
     
-    # operational characteristics
-    op <- trial %>%
-      map(~ {
-        subject <- seq_along(.$treatment)
-        Imb <- .$imbalance
-        FI <- .$forcing_index
-        MPM1 <- .$mpm1
-        MPM2 <- .$mpm2
-        probability <- as_data_frame(.$probability) %>%
-          set_names(c("pi[1]", "pi[2]", "pi[3]", "pi[4]"))
-        bind_cols(data_frame(subject, Imb, FI, MPM1, MPM2), probability)
-      }) %>%
-      bind_rows() %>%
-      group_by(subject) %>%
-      summarise(MI= max(Imb),
-                AFI = mean(FI),
-                AMPM1 = mean(MPM1),
-                AMPM2 = mean(MPM2),
-                `pi[1]` = mean(`pi[1]`),
-                `pi[2]` = mean(`pi[2]`),
-                `pi[3]` = mean(`pi[3]`),
-                `pi[4]` = mean(`pi[4]`),
-                na.rm = TRUE)
-    
-    # alocation proportions
-    prop <- trial %>%
-      map(~ {
-        subject <- seq_along(.$treatment)
-        bind_cols(data_frame(subject), as_data_frame(.$proportion)) %>%
-          set_names(c("subject", "rho[1]", "rho[2]", "rho[3]", "rho[4]")) %>%
-          filter(subject %in% c(25, 50, 100, 150, 200))
-      }) %>%
-      bind_rows()
-    
-    # ASD
-    ASD <- trial %>%
-      map(~ {
-        nsbj <- nrow(.$proportion)
-        subject <- seq_len(nsbj)
-        bind_cols(data_frame(subject), as_data_frame(.$proportion)) %>%
-          set_names(c("subject", "rho[1]", "rho[2]", "rho[3]", "rho[4]"))
-      }) %>% bind_rows() %>%
-      gather(variable, value, -subject) %>%
-      group_by(variable, subject) %>%
-      summarise(value_var = var(value)) %>%
-      group_by(subject) %>%
-      summarise(ASD = sum(value_var)) %>%
-      mutate(ASD = sqrt(subject*ASD))
-    
-    # allocation probabilities
-    prob <- trial %>%
-      map(~{
-        subject <- seq_along(.$treatment)
-        bind_cols(data_frame(subject), as_data_frame(.$probability)) %>%
-          set_names(c("subject", "pi[1]", "pi[2]", "pi[3]", "pi[4]"))
-      }) %>%
-      bind_rows() %>%
-      gather(probability, value, -subject) %>%
-      group_by(probability, subject) %>%
-      summarise(value = mean(value))
-    
-    # Type I error/power data
-    tIerror <- trial %>%
-      map(~ {
-        treatment <- .$treatment
+    trial <- simulate_rr(nsim, nsbj, target, proc_, proc_param_, distr, distr_param_flat)
+
+    # Type I error/power 
+    tIerror <- map(seq_len(nrow(trial$treatment)), ~ {
+        treatment <- trial$treatment[., ]
         subject <- seq_along(treatment)
         
         # response1 is an original flat response (M1 model)
-        response1 <- .$response 
-        flat_m1 <- map_dbl(subject, ~ anova_test(treatment[1:.], response1[1:.], ntrt, alpha))
+        response1 <- trial$response[., ] 
+        flat_m1 <- map_dbl(subject, ~ artool:::.anova_test(treatment[1:.], response1[1:.], ntrt, alpha))
         
         # response2 is an original flat response with time drift added (M2 model)
         response2 <- response1 + subject/nsbj 
-        flat_m2 <- map_dbl(subject, ~ anova_test(treatment[1:.], response2[1:.], ntrt, alpha))
+        flat_m2 <- map_dbl(subject, ~ artool:::.anova_test(treatment[1:.], response2[1:.], ntrt, alpha))
         
         # reponse3 is a monotone response (M1 model)
-        response3 <- rnorm(nsbj, parameter[[1]][.$treatment], parameter[[2]][.$treatment])
-        monotone_m1 <- map_dbl(subject, ~ anova_test(treatment[1:.], response3[1:.], ntrt, alpha))
+        response3 <- response(distr, distr_param_monotone, treatment)
+        monotone_m1 <- map_dbl(subject, ~ artool:::.anova_test(treatment[1:.], response3[1:.], ntrt, alpha))
         
         # response4 is a monotone response response with time drift added (M2 model)
         response4 <- response3 + subject/nsbj
-        monotone_m2 <- map_dbl(subject, ~ anova_test(treatment[1:.], response4[1:.], ntrt, alpha))
+        monotone_m2 <- map_dbl(subject, ~ artool:::.anova_test(treatment[1:.], response4[1:.], ntrt, alpha))
         
         data_frame(subject, flat_m1, flat_m2, monotone_m1, monotone_m2)
         }) %>% bind_rows() %>%
@@ -137,22 +79,22 @@ run_example1 <- function(nsim) {
                 reject_se = sd(reject)/sqrt(nsim), 
                 na.rm = TRUE)
     
-    simulated_ex1[[sc]] <- list(
-      design = design,
-      target = target_str,
-      procedure = procedure,
-      op = op,
-      prop = prop,
-      ASD = ASD, 
-      prob = prob, 
+    tIerror <- trial$op %>% 
+      select(target, design, procedure, subject) %>% 
+      inner_join(tIerror, by = "subject")
+    
+    example1[[sc]] <- list(
+      op = trial$op,
+      probability = trial$probability,
+      allocation = trial$allocation, 
       tIerror = tIerror
     )
   } 
-  save(simulated_ex1, file = "./data/simulated_ex1.Rda")
+  save(example1, file = "./data/example1.Rda")
 }
 
 
-summary_example1 <- function(data_file = "./data/simulated_ex1.Rda") {
+summary_example1 <- function(data_file = "./data/example1.Rda", summary_folder = "summary_example1") {
   load(file = data_file)
   
   # colors to use in plots
@@ -166,16 +108,9 @@ summary_example1 <- function(data_file = "./data/simulated_ex1.Rda") {
   selected <- "[all_designs]"
   
   # operational characteristics
-  op <- simulated_ex1 %>%
-    map(~ {
-      nsbj <- max(.$op$subject)
-      bind_cols(.$op, data_frame(ASD = .$ASD$ASD,
-                                 target = rep(paste0("w = ", .$target), nsbj), 
-                                 procedure = rep(.$procedure, nsbj),
-                                 design = rep(.$design, nsbj)))
-      }) %>%
-    bind_rows() %>%
-    select(-na.rm)
+  op <- example1 %>%
+    map(~ {.$op}) %>%
+      bind_rows()
 
   design <- unique(op$design)
   procedure <- unique(op$procedure)
@@ -229,7 +164,7 @@ summary_example1 <- function(data_file = "./data/simulated_ex1.Rda") {
               legend.title = element_blank(),
               legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
     
-    ggsave(paste0("./data/plots1/", selected, " mpm1_vs_subject (", target_[i],").pdf"), width = 16, height = 9, units = "in")
+    ggsave(paste0("./data/", summary_folder, "/", selected, " mpm1_vs_subject (", target_[i],").pdf"), width = 16, height = 9, units = "in")
     
     # MPM2 vs subject
     sub_op %>%
@@ -254,7 +189,7 @@ summary_example1 <- function(data_file = "./data/simulated_ex1.Rda") {
             legend.title = element_blank(),
             legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
     
-    ggsave(paste0("./data/plots1/", selected, " mpm2_vs_subject (", target_[i],").pdf"), width = 16, height = 9, units = "in")
+    ggsave(paste0("./data/", summary_folder, "/", selected, " mpm2_vs_subject (", target_[i],").pdf"), width = 16, height = 9, units = "in")
 
     # MI vs subject
     sub_op %>%
@@ -278,7 +213,7 @@ summary_example1 <- function(data_file = "./data/simulated_ex1.Rda") {
             legend.title = element_blank(),
             legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
     
-    ggsave(paste0("./data/plots1/", selected, " mi_vs_subject (", target_[i],").pdf"), width = 16, height = 9, units = "in")
+    ggsave(paste0("./data/", summary_folder, "/", selected, " mi_vs_subject (", target_[i],").pdf"), width = 16, height = 9, units = "in")
 
     # AFI vs subject
     sub_op %>%
@@ -302,7 +237,7 @@ summary_example1 <- function(data_file = "./data/simulated_ex1.Rda") {
             legend.title = element_blank(),
             legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
     
-    ggsave(paste0("./data/plots1/", selected, " afi_vs_subject (", target_[i],").pdf"), width = 16, height = 9, units = "in")
+    ggsave(paste0("./data/", summary_folder, "/", selected, " afi_vs_subject (", target_[i],").pdf"), width = 16, height = 9, units = "in")
     
     
     # MPM1 vs MI
@@ -327,7 +262,7 @@ summary_example1 <- function(data_file = "./data/simulated_ex1.Rda") {
             legend.title = element_blank(),
             legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
     
-    ggsave(paste0("./data/plots1/", selected, " mpm1_vs_mi (", target_[i],").pdf"), width = 16, height = 9, units = "in")
+    ggsave(paste0("./data/", summary_folder, "/", selected, " mpm1_vs_mi (", target_[i],").pdf"), width = 16, height = 9, units = "in")
     
     # MPM2 vs MI
     sub_op %>%
@@ -351,7 +286,7 @@ summary_example1 <- function(data_file = "./data/simulated_ex1.Rda") {
             legend.title = element_blank(),
             legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
     
-    ggsave(paste0("./data/plots1/", selected, " mpm2_vs_mi (", target_[i],").pdf"), width = 16, height = 9, units = "in")
+    ggsave(paste0("./data/", summary_folder, "/", selected, " mpm2_vs_mi (", target_[i],").pdf"), width = 16, height = 9, units = "in")
     
     # AFI vs MI
     sub_op %>%
@@ -374,9 +309,9 @@ summary_example1 <- function(data_file = "./data/simulated_ex1.Rda") {
             legend.title = element_blank(),
             legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
     
-    ggsave(paste0("./data/plots1/", selected, " afi_vs_mi (", target_[i],").pdf"), width = 16, height = 9, units = "in")
+    ggsave(paste0("./data/", summary_folder, "/", selected, " afi_vs_mi (", target_[i],").pdf"), width = 16, height = 9, units = "in")
     
-    # AFI vs MPM1
+    # MPM1 vs AFI
     sub_op %>%
       ggplot(aes(x = AFI, y = AMPM1,  group = procedure))+
       geom_point(aes(shape = procedure, fill = procedure, color = procedure), size = 2)+
@@ -398,9 +333,33 @@ summary_example1 <- function(data_file = "./data/simulated_ex1.Rda") {
             legend.title = element_blank(),
             legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
     
-    ggsave(paste0("./data/plots1/", selected, " mpm1_vs_afi (", target_[i],").pdf"), width = 16, height = 9, units = "in")
+    ggsave(paste0("./data/", summary_folder, "/", selected, " mpm1_vs_afi (", target_[i],").pdf"), width = 16, height = 9, units = "in")
     
-    # AFI vs MPM2
+    # AFI vs MPM1
+    sub_op %>%
+      ggplot(aes(y = AFI, x = AMPM1,  group = procedure))+
+      geom_point(aes(shape = procedure, fill = procedure, color = procedure), size = 2)+
+      geom_line(aes(color = procedure), size = 0.1)+
+      scale_shape_manual(values = shape_values)+
+      scale_color_manual(values = color_values)+
+      scale_fill_manual(values = color_values)+
+      facet_wrap(~ design, scales = "free", ncol = 1)+
+      ggtitle(paste0("Average Forcing Index (AFI) vs. Average Momentum of Probability Mass (AMPM): ", target_[i]))+
+      xlab("AMPM")+
+      theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
+            axis.title.y = element_text(family = "Helvetica", face = "bold", size = 12),
+            axis.text.x  = element_text(family = "Helvetica", face = "bold", size = 10),
+            axis.text.y  = element_text(family = "Helvetica", face = "bold", size = 10),
+            title = element_text(family = "Helvetica", face = "bold", size = 14),
+            strip.text.x = element_text(family = "Helvetica", face = "bold", size = 10),
+            strip.text.y = element_text(family = "Helvetica", face = "bold", size = 10),
+            legend.position = "right",
+            legend.title = element_blank(),
+            legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
+    
+    ggsave(paste0("./data/", summary_folder, "/", selected, " afi_vs_mpm1 (", target_[i],").pdf"), width = 16, height = 9, units = "in")
+
+    # MPM2 vs AFI
     sub_op %>%
       ggplot(aes(x = AFI, y = AMPM2,  group = procedure))+
       geom_point(aes(shape = procedure, fill = procedure, color = procedure), size = 2)+
@@ -422,7 +381,31 @@ summary_example1 <- function(data_file = "./data/simulated_ex1.Rda") {
             legend.title = element_blank(),
             legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
     
-    ggsave(paste0("./data/plots1/", selected, " mpm2_vs_afi (", target_[i],").pdf"), width = 16, height = 9, units = "in")
+    ggsave(paste0("./data/", summary_folder, "/", selected, " mpm2_vs_afi (", target_[i],").pdf"), width = 16, height = 9, units = "in")
+    
+    # AFI vs MPM2
+    sub_op %>%
+      ggplot(aes(y = AFI, x = AMPM2,  group = procedure))+
+      geom_point(aes(shape = procedure, fill = procedure, color = procedure), size = 2)+
+      geom_line(aes(color = procedure), size = 0.1)+
+      scale_shape_manual(values = shape_values)+
+      scale_color_manual(values = color_values)+
+      scale_fill_manual(values = color_values)+
+      facet_wrap(~ design, scales = "free", ncol = 1)+
+      ggtitle(paste0("Average Forcing Index (AFI) vs. Average Momentum of Probability Mass (AMPM): ", target_[i]))+
+      xlab("AMPM")+
+      theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
+            axis.title.y = element_text(family = "Helvetica", face = "bold", size = 12),
+            axis.text.x  = element_text(family = "Helvetica", face = "bold", size = 10),
+            axis.text.y  = element_text(family = "Helvetica", face = "bold", size = 10),
+            title = element_text(family = "Helvetica", face = "bold", size = 14),
+            strip.text.x = element_text(family = "Helvetica", face = "bold", size = 10),
+            strip.text.y = element_text(family = "Helvetica", face = "bold", size = 10),
+            legend.position = "right",
+            legend.title = element_blank(),
+            legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
+    
+    ggsave(paste0("./data/", summary_folder, "/", selected, " afi_vs_mpm2 (", target_[i],").pdf"), width = 16, height = 9, units = "in")
     
   }, target_, op) 
   
@@ -481,12 +464,12 @@ summary_example1 <- function(data_file = "./data/simulated_ex1.Rda") {
             legend.title = element_blank(),
             legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
     
-    ggsave(paste0("./data/plots1/", selected, " ovp_heatmap (", target_[i],").pdf"), width = 16, height = 9, units = "in")
+    ggsave(paste0("./data/", summary_folder, "/", selected, " ovp_heatmap (", target_[i],").pdf"), width = 16, height = 9, units = "in")
     
   }, target_, ovpG)
   
   # create *.xlxs file with ovp(s) for a final sample size
-  wb <- loadWorkbook("./data/plots1/ovp4.xlsx", create = TRUE)
+  wb <- loadWorkbook(paste0("./data/", summary_folder, "/ovp4.xlsx"), create = TRUE)
   map(seq_along(target_), function(i, target_, ovpG, wb) {
     createSheet(wb, name =gsub(":", " ", target_))
     sub_ovpG <- ovpG %>% 
@@ -524,7 +507,7 @@ summary_example1 <- function(data_file = "./data/simulated_ex1.Rda") {
           legend.title = element_blank(),
           legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
   
-  ggsave(paste0("./data/plots1/", selected, " afi_vs_mi_selected_subjects", ".pdf"), width = 16, height = 9, units = "in")
+  ggsave(paste0("./data/", summary_folder, "/", selected, " afi_vs_mi_selected_subjects", ".pdf"), width = 16, height = 9, units = "in")
   
   # MPM1 vs MI scatter plot
   op %>%
@@ -548,7 +531,7 @@ summary_example1 <- function(data_file = "./data/simulated_ex1.Rda") {
           legend.title = element_blank(),
           legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
   
-  ggsave(paste0("./data/plots1/", selected, " mpm1_vs_mi_selected_subjects", ".pdf"), width = 16, height = 9, units = "in")
+  ggsave(paste0("./data/", summary_folder, "/", selected, " mpm1_vs_mi_selected_subjects", ".pdf"), width = 16, height = 9, units = "in")
 
 
   # MPM2 vs MI scatter plot
@@ -573,7 +556,7 @@ summary_example1 <- function(data_file = "./data/simulated_ex1.Rda") {
           legend.title = element_blank(),
           legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
   
-  ggsave(paste0("./data/plots1/", selected, " mpm2_vs_mi_selected_subjects", ".pdf"), width = 16, height = 9, units = "in")
+  ggsave(paste0("./data/", summary_folder, "/", selected, " mpm2_vs_mi_selected_subjects", ".pdf"), width = 16, height = 9, units = "in")
 
   # AFI vs MPM1 scatter plot
   op %>%
@@ -597,7 +580,7 @@ summary_example1 <- function(data_file = "./data/simulated_ex1.Rda") {
           legend.title = element_blank(),
           legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
   
-  ggsave(paste0("./data/plots1/", selected, " afi_vs_mpm1_selected_subjects", ".pdf"), width = 16, height = 9, units = "in")
+  ggsave(paste0("./data/", summary_folder, "/", selected, " afi_vs_mpm1_selected_subjects", ".pdf"), width = 16, height = 9, units = "in")
   
   # AFI vs MPM2 scatter plot
   op %>%
@@ -621,21 +604,16 @@ summary_example1 <- function(data_file = "./data/simulated_ex1.Rda") {
           legend.title = element_blank(),
           legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
   
-  ggsave(paste0("./data/plots1/", selected, " afi_vs_mpm2_selected_subjects", ".pdf"), width = 16, height = 9, units = "in")
+  ggsave(paste0("./data/", summary_folder, "/", selected, " afi_vs_mpm2_selected_subjects", ".pdf"), width = 16, height = 9, units = "in")
   
   # ======================================
   
   # allocation proportion boxplots
-  ap <- simulated_ex1 %>%
-    map(~ {
-      nsim <- max(nrow(.$prop))
-      bind_cols(.$prop, data_frame(target = rep(paste0("w = ", .$target), nsim), 
-                                 procedure = rep(.$procedure, nsim),
-                                 design = rep(.$design, nsim)))
-    }) %>%
+  ap <- example1 %>%
+    map(~ {.$allocation}) %>%
     bind_rows() %>%
-    filter(design %in% selected_designs & subject == max(subject)) %>%
-    gather(treatment, proportion, -target, -design, -procedure, -subject) %>%
+    filter(design %in% selected_designs) %>%
+    gather(treatment, proportion, -target, -design, -procedure) %>%
     group_by(target, design, procedure, treatment)
   
   map(seq_along(target_), function(i, target_, ap) {
@@ -647,7 +625,7 @@ summary_example1 <- function(data_file = "./data/simulated_ex1.Rda") {
       scale_y_continuous(breaks = w/sum(w))+
       ggtitle(paste0("Allocation proportion: ", target_[i]))+
       ylab("allocation proportion")+
-      facet_wrap(~ treatment, ncol = 1, labeller = label_parsed)+
+      facet_wrap(~ treatment, ncol = 1)+
       theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
             axis.title.y = element_text(family = "Helvetica", face = "bold", size = 12),
             axis.text.x  = element_text(family = "Helvetica", face = "bold", size = 6),
@@ -660,19 +638,17 @@ summary_example1 <- function(data_file = "./data/simulated_ex1.Rda") {
             legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
     
     
-    ggsave(paste0("./data/plots1/", selected, " ap_boxplots (", target_[i],").pdf"), width = 16, height = 9, units = "in")
+    ggsave(paste0("./data/", summary_folder, "/", selected, " ap_boxplots (", target_[i],").pdf"), width = 16, height = 9, units = "in")
     
   }, target_, ap)
   
   # unconditional allocation probability plots
-  Pi <- simulated_ex1 %>%
-    map(~ {
-      nval <- max(nrow(.$prob))
-      bind_cols(.$prob, data_frame(target = rep(paste0("w = ", .$target), nval), 
-                                   procedure = rep(.$procedure, nval),
-                                   design = rep(.$design, nval)))
-    }) %>%
-    bind_rows() 
+  Pi <- example1 %>%
+    map(~ {.$probability}) %>%
+    bind_rows() %>%
+    gather(treatment, value, -target, -design, -procedure, -subject) %>%
+    group_by(target, design, procedure, treatment, subject)
+  
 
   design_ <- unique(Pi$design)
   
@@ -683,11 +659,11 @@ summary_example1 <- function(data_file = "./data/simulated_ex1.Rda") {
       w <- as.numeric(unlist(regmatches(target_i, gregexpr("[[:digit:]]+", target_i))))
       sub_Pi %>%
         filter(design == design_[j]) %>%
-        ggplot(aes(x = subject, y = value, group = probability))+
-        geom_point(aes(color = probability), size = 1.25)+
-        geom_line(aes(color = probability), size = 0.5)+
+        ggplot(aes(x = subject, y = value, group = treatment))+
+        geom_point(aes(color = treatment), size = 1.25)+
+        geom_line(aes(color = treatment), size = 0.5)+
         scale_y_continuous(limits = c(0, 1), breaks = w/sum(w))+
-        scale_color_manual(values = c("darkblue", "darkgreen", "black", "red"), labels = c(parse(text="pi[1]"), parse(text="pi[2]"), parse(text="pi[3]"), parse(text="pi[4]")))+
+        scale_color_manual(values = c("darkblue", "darkgreen", "black", "red"), labels = c("treatement 1", "treatement 2", "treatement 3", "treatement 4"))+
         ggtitle(paste0("Unconditional allocation probability: ", target_i, ", ", design_[j]))+
         xlab("number of subjects")+
         ylab("unconditional allocation probability")+
@@ -704,7 +680,7 @@ summary_example1 <- function(data_file = "./data/simulated_ex1.Rda") {
               legend.text  = element_text(family = "Helvetica", face = "bold", size = 16))
       
       
-      ggsave(paste0("./data/plots1/", "[arp_property]", " pi_plots (", target_i, ", ", design[j], ").pdf"), width = 16, height = 9, units = "in")
+      ggsave(paste0("./data/", summary_folder, "/", "[arp_property]", " pi_plots (", target_i, ", ", design[j], ").pdf"), width = 16, height = 9, units = "in")
     }, target_[i], design_, sub_Pi)
   }, target_, design_, Pi)
 
@@ -727,7 +703,7 @@ summary_example1 <- function(data_file = "./data/simulated_ex1.Rda") {
       scale_y_continuous(breaks = w/sum(w))+
       ggtitle(paste0("Allocation proportion: ", target_[i]))+
       ylab("allocation proportion")+
-      facet_wrap(~ treatment, ncol = 1, labeller = label_parsed)+
+      facet_wrap(~ treatment, ncol = 1)+
       theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
             axis.title.y = element_text(family = "Helvetica", face = "bold", size = 12),
             axis.text.x  = element_text(family = "Helvetica", face = "bold", size = 10),
@@ -740,7 +716,7 @@ summary_example1 <- function(data_file = "./data/simulated_ex1.Rda") {
             legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
     
     
-    ggsave(paste0("./data/plots1/", selected, " ap_boxplots (", target_[i],").pdf"), width = 16, height = 9, units = "in")
+    ggsave(paste0("./data/", summary_folder, "/", selected, " ap_boxplots (", target_[i],").pdf"), width = 16, height = 9, units = "in")
     
   }, target_, ap)
 
@@ -782,7 +758,7 @@ summary_example1 <- function(data_file = "./data/simulated_ex1.Rda") {
     geom_line(data = sub_op11, aes(x = AFI, y = ASD, linetype = design, color = procedure), size = 1)+
     geom_point(data = sub_op12, aes(x = AFI, y = ASD, shape = factor(subject), color = procedure), size = 3)+
     geom_text(data = sub_op12, aes(x = AFI, y = ASD, label=procedure, color = procedure),
-              size = 5, angle = 30 , family = "Helvetica", check_overlap = FALSE, nudge_y = 0.1)+
+              size = 4, angle = 60 , family = "Helvetica", check_overlap = FALSE, nudge_y = 0.15)+
     labs(shape="# of subjects")+
     ggtitle("\"Average Standard Deviation\" of Allocation Proportions (ASD) vs. Average Forcing Index (AFI)")+
     ylab("ASD")+
@@ -799,63 +775,58 @@ summary_example1 <- function(data_file = "./data/simulated_ex1.Rda") {
           legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
   
    
-  ggsave(paste0("./data/plots1/", selected, " asd_vs_afi.pdf"), width = 16, height = 9, units = "in")
+  ggsave(paste0("./data/", summary_folder, "/", selected, " asd_vs_afi.pdf"), width = 16, height = 9, units = "in")
   
   
   # type I error/power
-  tIerror <- simulated_ex1 %>%
-    map(~ .$tIerror) %>%
-    bind_rows() %>%
-    filter(design %in% selected_designs)
-
-  resp_type_ <- unique(alpha$response_type)
-  resp_model_ <- unique(alpha$response_model)
-  
-  map(seq_along(target_), function(k, target_, resp_type_, resp_model_, aplha) {
-    sub_alpha <- alpha %>%
-      filter(target == target_[k])
-    
-    map(seq_along(resp_type_), function(i, target_k, resp_type_, resp_model_, sub_alpha) {
-      sub_sub_alpha <- sub_alpha %>%
-        filter(response_type == resp_type_[i])
-      
-      map(seq_along(resp_model_), function(j, target_k, resp_type_i, resp_model_, sub_sub_alpha){
-        sub_sub_alpha %>%
-          filter(response_model == resp_model_[j]) %>%
-          ggplot(aes(x = subject, y = mean, ymin = min, ymax = max))+
-            geom_ribbon(fill = "lightblue")+
-            geom_line(size = 0.5)+
-            xlab("number of subjects")+
-            ylab("")+
-            scale_x_continuous(breaks = c(1, seq(25, 200, by = 25)))+
-            ggtitle(paste0(resp_type_i, ", ", resp_model_[j], ", ", target_k))+
-            facet_wrap( ~ procedure, ncol = 5, scales = "free_y")+
-            theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
-                  axis.title.y = element_text(family = "Helvetica", face = "bold", size = 12),
-                  axis.text.x  = element_text(family = "Helvetica", face = "bold", size = 10),
-                  axis.text.y  = element_text(family = "Helvetica", face = "bold", size = 10),
-                  title = element_text(family = "Helvetica", face = "bold", size = 14),
-                  strip.text.x = element_text(family = "Helvetica", face = "bold", size = 10),
-                  strip.text.y = element_text(family = "Helvetica", face = "bold", size = 10),
-                  legend.position = "none",
-                  legend.title = element_blank(),
-                  legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
-        
-        ggsave(paste0("./data/plots/", selected, "tIerror-power (", target_k, ", ", resp_type[i], ", ",  j,  ").pdf"), width = 16, height = 9, units = "in")    
-      }, target_[k], resp_type_[i], resp_model_, sub_sub_alpha)
-    }, target_[k], resp_type_, resp_model_, sub_alpha)
-  }, target_, resp_type_, resp_model_, alpha)
+  # tIerror <- example1 %>%
+  #   map(~ .$tIerror) %>%
+  #   bind_rows() %>%
+  #   filter(design %in% selected_designs)
+  # 
+  # resp_type_ <- unique(alpha$response_type)
+  # resp_model_ <- unique(alpha$response_model)
+  # 
+  # map(seq_along(target_), function(k, target_, resp_type_, resp_model_, aplha) {
+  #   sub_alpha <- alpha %>%
+  #     filter(target == target_[k])
+  #   
+  #   map(seq_along(resp_type_), function(i, target_k, resp_type_, resp_model_, sub_alpha) {
+  #     sub_sub_alpha <- sub_alpha %>%
+  #       filter(response_type == resp_type_[i])
+  #     
+  #     map(seq_along(resp_model_), function(j, target_k, resp_type_i, resp_model_, sub_sub_alpha){
+  #       sub_sub_alpha %>%
+  #         filter(response_model == resp_model_[j]) %>%
+  #         ggplot(aes(x = subject, y = mean, ymin = min, ymax = max))+
+  #           geom_ribbon(fill = "lightblue")+
+  #           geom_line(size = 0.5)+
+  #           xlab("number of subjects")+
+  #           ylab("")+
+  #           scale_x_continuous(breaks = c(1, seq(25, 200, by = 25)))+
+  #           ggtitle(paste0(resp_type_i, ", ", resp_model_[j], ", ", target_k))+
+  #           facet_wrap( ~ procedure, ncol = 5, scales = "free_y")+
+  #           theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
+  #                 axis.title.y = element_text(family = "Helvetica", face = "bold", size = 12),
+  #                 axis.text.x  = element_text(family = "Helvetica", face = "bold", size = 10),
+  #                 axis.text.y  = element_text(family = "Helvetica", face = "bold", size = 10),
+  #                 title = element_text(family = "Helvetica", face = "bold", size = 14),
+  #                 strip.text.x = element_text(family = "Helvetica", face = "bold", size = 10),
+  #                 strip.text.y = element_text(family = "Helvetica", face = "bold", size = 10),
+  #                 legend.position = "none",
+  #                 legend.title = element_blank(),
+  #                 legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
+  #       
+  #       ggsave(paste0("./data/", summary_folder, "/", selected, "tIerror-power (", target_k, ", ", resp_type[i], ", ",  j,  ").pdf"), width = 16, height = 9, units = "in")    
+  #     }, target_[k], resp_type_[i], resp_model_, sub_sub_alpha)
+  #   }, target_[k], resp_type_, resp_model_, sub_alpha)
+  # }, target_, resp_type_, resp_model_, alpha)
   
   # type I error/power table
-  alpha <- simulated_ex1 %>%
-    map(~ {
-      n_row <- nrow(.$tIerror)
-      bind_cols(.$tIerror, data_frame(target = rep(paste0("w = ", .$target), n_row), 
-                                 procedure = rep(.$procedure, n_row),
-                                 design = rep(.$design, n_row)))
-    }) %>%
+  alpha <- example1 %>%
+    map(~ {.$tIerror}) %>%
     bind_rows() %>%
-    filter(subject %in% c(150, 200) ) %>%
+    filter(subject %in% c(50, 100, 150, 200) ) %>%
     select(target, design, procedure, subject, 
            variable, alpha = reject_mean) %>%
     arrange(target, design, procedure, subject) %>%
@@ -864,11 +835,11 @@ summary_example1 <- function(data_file = "./data/simulated_ex1.Rda") {
   # create *.xlxs file with type I error/power values
   target_ <- unique(alpha$target)
   
-  wb <- loadWorkbook("./data/plots1/alpha.xlsx", create = TRUE)
+  wb <- loadWorkbook(paste0("./data/", summary_folder, "/alpha.xlsx"), create = TRUE)
   map(seq_along(target_), function(i, target_, alpha, wb) {
     createSheet(wb, name =gsub(":", " ", target_))
     sub_alpha1 <- alpha %>% 
-      filter(target == target_[i] & subject == 150) %>%
+      filter(target == target_[i] & subject == 50) %>%
       select(procedure, 
              `n = 50, Flat Response (No Drift)` = flat_m1, 
              `n = 50, Flat Response (With Drift)` = flat_m2, 
@@ -876,14 +847,33 @@ summary_example1 <- function(data_file = "./data/simulated_ex1.Rda") {
              `n = 50, Monotone Response (With Drift)` = monotone_m2)
     
     sub_alpha2 <- alpha %>% 
+      filter(target == target_[i] & subject == 100) %>%
+      select(procedure, 
+             `n = 100, Flat Response (No Drift)` = flat_m1, 
+             `n = 100, Flat Response (With Drift)` = flat_m2, 
+             `n = 100, Monotone Response (No Drift)` = monotone_m1, 
+             `n = 100, Monotone Response (With Drift)` = monotone_m2)
+
+    sub_alpha3 <- alpha %>% 
+      filter(target == target_[i] & subject == 150) %>%
+      select(procedure, 
+             `n = 150, Flat Response (No Drift)` = flat_m1, 
+             `n = 150, Flat Response (With Drift)` = flat_m2, 
+             `n = 150, Monotone Response (No Drift)` = monotone_m1, 
+             `n = 150, Monotone Response (With Drift)` = monotone_m2)
+
+    sub_alpha4 <- alpha %>% 
       filter(target == target_[i] & subject == 200) %>%
       select(procedure, 
              `n = 200, Flat Response (No Drift)` = flat_m1, 
              `n = 200, Flat Response (With Drift)` = flat_m2, 
              `n = 200, Monotone Response (No Drift)` = monotone_m1, 
              `n = 200, Monotone Response (With Drift)` = monotone_m2)
-    sub_alpha <- 
-      inner_join(sub_alpha1, sub_alpha2, by = c("procedure"))
+    sub_alpha <- inner_join(
+      inner_join(sub_alpha1, sub_alpha2, by = c("procedure")),
+      inner_join(sub_alpha3, sub_alpha4, by = c("procedure")),
+      by = c("procedure")
+    )
     
     writeWorksheet(wb, sub_alpha, sheet = gsub(":", " ", target_[i]))
     
