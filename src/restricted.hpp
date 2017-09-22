@@ -55,6 +55,8 @@ std::function<List (int, IntegerVector)> set_rand_procedure(IntegerVector, std::
 // run restricted randomization procedure
 List restricted(int, IntegerVector, std::string, double, std::string, List);
   
-  
-  
-  
+
+// simulation of restricted randomization procedure
+List simulate_restricted(int, int, IntegerVector w, std::string, double, std::string, List);
+
+
