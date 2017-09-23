@@ -53,7 +53,8 @@ The following randomization procedures are considered:
 <ol>
   <li><b>C</b>ompletely <b>R</b>andomized <b>D</b>esign (CRD): Every subject is randomizad to treatment group
   with fixed probabilities that are equal to the target allocation proportions:
-  $$P_{i,j} = \rho_i, \quad i = 1, 2, \ldots, K.$$</li>
+  ![equation](http://latex.codecogs.com/gif.latex?P_{i,j} = \rho_i, \quad i = 1, 2, \ldots, K.
+    $$P_{i,j} = \rho_i, \quad i = 1, 2, \ldots, K.$$</li>
 
   <li><b>P</b>ermuted <b>B</b>lock <b>D</b>esign (PBD($\lambda$)): Let $W = w_1+w_2+\ldots+w_K$ and let $b =
   \lambda W$, where $\lambda$ = "number of minimal balanced sets in the block of size $b$". Let
