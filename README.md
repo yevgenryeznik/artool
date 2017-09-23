@@ -18,8 +18,16 @@ Notations:
 <br>
 <table id="notes">
   <tr>
-    <td id="center">$K$</td>
-    <td>Number of treatments ($K \geq 2$)</td>
+    <td id="center">
+      <a href="https://www.codecogs.com/eqnedit.php?latex=K" target="_blank">
+        <img src="https://latex.codecogs.com/gif.latex?K" title="K" />
+      </a>
+    </td>
+    <td>Number of treatments 
+          <a href="https://www.codecogs.com/eqnedit.php?latex=(K \geq 2)" target="_blank">
+        <img src="https://latex.codecogs.com/gif.latex?(K \geq 2)" title="K" />
+      </a>
+    </td>
   </tr>
   <tr>
     <td id="center"<a href="https://www.codecogs.com/eqnedit.php?latex=$w_1:w_2:\ldots:w_K$" target="_blank"><img src="https://latex.codecogs.com/gif.latex?$w_1:w_2:\ldots:w_K$" title="$w_1:w_2:\ldots:w_K$" /></a></td>
