@@ -2,7 +2,7 @@
 % Please edit documentation in R/example1.R
 \name{run_example1}
 \alias{run_example1}
-\title{simulation example for a paper ""}
+\title{simulation example for a paper in "Statistics in Medicine"}
 \usage{
 run_example1(nsim)
 }
@@ -10,5 +10,5 @@ run_example1(nsim)
 \item{nsim}{number of simulations}
 }
 \description{
-simulation example for a paper ""
+simulation example for a paper in "Statistics in Medicine"
 }
