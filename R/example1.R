@@ -1,4 +1,4 @@
-#' simulation example for a paper ""
+#' simulation example for a paper in "Statistics in Medicine"
 #' @param nsim number of simulations
 
 run_example1 <- function(nsim) {
