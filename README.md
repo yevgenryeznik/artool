@@ -24,8 +24,8 @@ Notations:
       </a>
     </td>
     <td>Number of treatments 
-          <a href="https://www.codecogs.com/eqnedit.php?latex=(K \geq 2)" target="_blank">
-        <img src="https://latex.codecogs.com/gif.latex?(K \geq 2)" title="K" />
+      <a href="https://www.codecogs.com/eqnedit.php?latex=K&space;\geq&space;2" target="_blank">
+        <img src="https://latex.codecogs.com/gif.latex?K&space;\geq&space;2" title="K \geq 2" />
       </a>
     </td>
   </tr>
