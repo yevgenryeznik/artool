@@ -22,7 +22,7 @@ Notations:
     <td>Number of treatments ($K \geq 2$)</td>
   </tr>
   <tr>
-    <td id="center">$w_1:w_2:\ldots:w_K$</td>
+    <td id="center"<a href="https://www.codecogs.com/eqnedit.php?latex=$w_1:w_2:\ldots:w_K$" target="_blank"><img src="https://latex.codecogs.com/gif.latex?$w_1:w_2:\ldots:w_K$" title="$w_1:w_2:\ldots:w_K$" /></a></td>
     <td>Fixed allocation ratio; $w_k$'s are positive, not necessarily equal integers with the greatest common divisor of 1</td>
   </tr>
   <tr>
