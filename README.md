@@ -46,18 +46,18 @@ Notations:
         <img src="https://latex.codecogs.com/gif.latex?\rho_k&space;=&space;\frac{w_k}{\sum_{k=1}^K{w_k}}" title="\rho_k = \frac{w_k}{\sum_{k=1}^K{w_k}}" />
       </a>
      </td>
-    <td>Target treatment allocation proportions <img src="https://latex.codecogs.com/gif.latex?0 < \rho_k < 1" /> $0 < \rho_k < 1$ and $\sum_{k=1}^K{\rho_k}=1$</td>
+    <td>Target treatment allocation proportions <a href="https://www.codecogs.com/eqnedit.php?latex=0&space;<&space;\rho_k&space;<&space;1" target="_blank"><img src="https://latex.codecogs.com/gif.latex?0&space;<&space;\rho_k&space;<&space;1" title="0 < \rho_k < 1" /></a> and <a href="https://www.codecogs.com/eqnedit.php?latex=$\sum_{k=1}^K{\rho_k}=1$" target="_blank"><img src="https://latex.codecogs.com/gif.latex?$\sum_{k=1}^K{\rho_k}=1$" title="$\sum_{k=1}^K{\rho_k}=1$" /></a></td>
   </tr>
   <tr>
-    <td id="center">$\rho=(\rho_1, \rho_2, \ldots, \rho_K)$</td>
+    <td id="center"><a href="https://www.codecogs.com/eqnedit.php?latex=$\rho=(\rho_1,&space;\rho_2,&space;\ldots,&space;\rho_K)$" target="_blank"><img src="https://latex.codecogs.com/gif.latex?$\rho=(\rho_1,&space;\rho_2,&space;\ldots,&space;\rho_K)$" title="$\rho=(\rho_1, \rho_2, \ldots, \rho_K)$" /></a></td>
     <td>Vector of target allocation proportions</td>
   </tr>
   <tr>
-    <td id="center">$n$</td>
+    <td id="center"><a href="https://www.codecogs.com/eqnedit.php?latex=$n$" target="_blank"><img src="https://latex.codecogs.com/gif.latex?$n$" title="$n$" /></a></td>
     <td>Total sample size for the trial</td>
   </tr>
   <tr>
-    <td id="center">$N(j) = (N_1(j), N_2(j), \ldots, N_K(j))$</td>
+    <td id="center"><a href="https://www.codecogs.com/eqnedit.php?latex=N(j)&space;=&space;(N_1(j),&space;N_2(j),&space;\ldots,&space;N_K(j))" target="_blank"><img src="https://latex.codecogs.com/gif.latex?N(j)&space;=&space;(N_1(j),&space;N_2(j),&space;\ldots,&space;N_K(j))" title="N(j) = (N_1(j), N_2(j), \ldots, N_K(j))" /></a></td>
     <td>Numbers of subjects assigned to $K$ treatments after $j$ allocations ($1 \leq j \leq n$). Note that, in general, $N_k(j)$'s are random variables with $\sum_{k=1}^K{N_k}(j)=j$</td>
   </tr>
   <tr>
