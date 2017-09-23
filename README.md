@@ -1,16 +1,47 @@
-# artool
-***A***daptive ***R***andomization ***tool*** for clinical trials.
+<!DOCTYPE html>
+<html>
+<head>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+</script>
+<script type="text/javascript" async
+  src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-MML-AM_CHTML">
+</script>
 
-The aim of the package is modelling and simulations of clinical trials with different randomiztion techniques such as
+<style>
+table, tr, td {
+    border: 0.5px solid black;
 
-- Restricted Randomization (***RR***)
-- Response-Adaptive Randomization (***RAR***)
-- Covariate-Adaptive Randomization (***CA***)
-- Covariate-Adjusted Response-Adaptive Randomization (***CARA***)
+}
+table {
+    width:100%;
+    border-spacing: 10px;
+}
+table#notes tr:nth-child(even) {
+    background-color: lightblue;
+}
+table#notes tr:nth-child(odd) {
+   background-color: lightyellow;
+}
+td#center {
+    text-align: center;
+}
+td#left {
+    text-align: left;
+}
+p.big {
+    line-height: 1.3;
+}
+</style>
+</head>
 
-So far, several ***RR*** procedures have been implemented.
+<body>
 
-## Restricted Randomization procedures
+The purpose of this app is to simulate <e>clinical trials targeting unequal allocation</e>. We consider 8 different <b>randomization procedures</b>  in order to compare them in terms of
+<ul>
+  <li>randomness</li>
+  <li>balance</li>
+</ul>
 
 Notations:
 <br>
@@ -53,8 +84,7 @@ The following randomization procedures are considered:
 <ol>
   <li><b>C</b>ompletely <b>R</b>andomized <b>D</b>esign (CRD): Every subject is randomizad to treatment group
   with fixed probabilities that are equal to the target allocation proportions:
-  ![equation](http://latex.codecogs.com/gif.latex?P_{i,j} = \rho_i, \quad i = 1, 2, \ldots, K.
-    $$P_{i,j} = \rho_i, \quad i = 1, 2, \ldots, K.$$</li>
+  $$P_{i,j} = \rho_i, \quad i = 1, 2, \ldots, K.$$</li>
 
   <li><b>P</b>ermuted <b>B</b>lock <b>D</b>esign (PBD($\lambda$)): Let $W = w_1+w_2+\ldots+w_K$ and let $b =
   \lambda W$, where $\lambda$ = "number of minimal balanced sets in the block of size $b$". Let
@@ -141,3 +171,6 @@ Titterington DM (1983). On constrained balance randomization for clinical trials
 Klotz JH (1978). Maximum entropy constrained balance randomization in clinical trials. <em>Biometrics</em> 34(2), 283-287.
 </li>
 </ol>
+
+</body>
+</html>
