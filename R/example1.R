@@ -74,10 +74,10 @@ run_example1 <- function(nsim) {
         data_frame(subject, flat_m1, flat_m2, monotone_m1, monotone_m2)
         }) %>% bind_rows() %>%
       gather(variable, reject, -subject) %>%
+      filter(!is.na(reject)) %>%
       group_by(variable, subject) %>%
       summarise(reject_mean = mean(reject), 
-                reject_se = sd(reject)/sqrt(nsim), 
-                na.rm = TRUE)
+                reject_se = sd(reject)/sqrt(nsim))
     
     tIerror <- trial$op %>% 
       select(target, design, procedure, subject) %>% 
