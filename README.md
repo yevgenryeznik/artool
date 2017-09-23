@@ -46,7 +46,7 @@ Notations:
         <img src="https://latex.codecogs.com/gif.latex?\rho_k&space;=&space;\frac{w_k}{\sum_{k=1}^K{w_k}}" title="\rho_k = \frac{w_k}{\sum_{k=1}^K{w_k}}" />
       </a>
      </td>
-    <td>Target treatment allocation proportions $0 < \rho_k < 1$ and $\sum_{k=1}^K{\rho_k}=1$</td>
+    <td>Target treatment allocation proportions <img src="https://latex.codecogs.com/gif.latex?0 < \rho_k < 1" /> $0 < \rho_k < 1$ and $\sum_{k=1}^K{\rho_k}=1$</td>
   </tr>
   <tr>
     <td id="center">$\rho=(\rho_1, \rho_2, \ldots, \rho_K)$</td>
