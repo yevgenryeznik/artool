@@ -31,8 +31,8 @@ Notations:
   </tr>
   <tr>
   <td id="center"
-    <a href="https://www.codecogs.com/eqnedit.php?latex=$w_1:w_2:\ldots:w_K$" target="_blank">
-      <img src="https://latex.codecogs.com/gif.latex?$w_1:w_2:\ldots:w_K$" title="$w_1:w_2:\ldots:w_K$" />
+    <a href="https://www.codecogs.com/eqnedit.php?latex=w_1:w_2:\ldots:w_K" target="_blank">
+      <img src="https://latex.codecogs.com/gif.latex?w_1:w_2:\ldots:w_K" title="w_1:w_2:\ldots:w_K" />
     </a>
   </td>
   <td>Fixed allocation ratio; <a href="https://www.codecogs.com/eqnedit.php?latex=$w_k$" target="_blank">
@@ -49,11 +49,11 @@ Notations:
     <td>Target treatment allocation proportions <a href="https://www.codecogs.com/eqnedit.php?latex=0&space;<&space;\rho_k&space;<&space;1" target="_blank"><img src="https://latex.codecogs.com/gif.latex?0&space;<&space;\rho_k&space;<&space;1" title="0 < \rho_k < 1" /></a> and <a href="https://www.codecogs.com/eqnedit.php?latex=$\sum_{k=1}^K{\rho_k}=1$" target="_blank"><img src="https://latex.codecogs.com/gif.latex?$\sum_{k=1}^K{\rho_k}=1$" title="$\sum_{k=1}^K{\rho_k}=1$" /></a></td>
   </tr>
   <tr>
-    <td id="center"><a href="https://www.codecogs.com/eqnedit.php?latex=$\rho=(\rho_1,&space;\rho_2,&space;\ldots,&space;\rho_K)$" target="_blank"><img src="https://latex.codecogs.com/gif.latex?$\rho=(\rho_1,&space;\rho_2,&space;\ldots,&space;\rho_K)$" title="$\rho=(\rho_1, \rho_2, \ldots, \rho_K)$" /></a></td>
+    <td id="center"><a href="https://www.codecogs.com/eqnedit.php?latex=\rho=(\rho_1,&space;\rho_2,&space;\ldots,&space;\rho_K)" target="_blank"><img src="https://latex.codecogs.com/gif.latex?\rho=(\rho_1,&space;\rho_2,&space;\ldots,&space;\rho_K)" title="\rho=(\rho_1, \rho_2, \ldots, \rho_K)" /></a></td>
     <td>Vector of target allocation proportions</td>
   </tr>
   <tr>
-    <td id="center"><a href="https://www.codecogs.com/eqnedit.php?latex=$n$" target="_blank"><img src="https://latex.codecogs.com/gif.latex?$n$" title="$n$" /></a></td>
+    <td id="center"><a href="https://www.codecogs.com/eqnedit.php?latex=$n$" target="_blank"><img src="https://latex.codecogs.com/gif.latex?n" title="n" /></a></td>
     <td>Total sample size for the trial</td>
   </tr>
   <tr>
