@@ -30,11 +30,22 @@ Notations:
     </td>
   </tr>
   <tr>
-    <td id="center"<a href="https://www.codecogs.com/eqnedit.php?latex=$w_1:w_2:\ldots:w_K$" target="_blank"><img src="https://latex.codecogs.com/gif.latex?$w_1:w_2:\ldots:w_K$" title="$w_1:w_2:\ldots:w_K$" /></a></td>
-    <td>Fixed allocation ratio; $w_k$'s are positive, not necessarily equal integers with the greatest common divisor of 1</td>
+  <td id="center"
+    <a href="https://www.codecogs.com/eqnedit.php?latex=$w_1:w_2:\ldots:w_K$" target="_blank">
+      <img src="https://latex.codecogs.com/gif.latex?$w_1:w_2:\ldots:w_K$" title="$w_1:w_2:\ldots:w_K$" />
+    </a>
+  </td>
+  <td>Fixed allocation ratio; <a href="https://www.codecogs.com/eqnedit.php?latex=$w_k$" target="_blank">
+      <img src="https://latex.codecogs.com/gif.latex?$w_k$" title="$w_k$" />
+    </a>'s are positive, not necessarily equal integers with the greatest common divisor of 1
+  </td>
   </tr>
   <tr>
-    <td id="center">$\rho_k = \frac{w_k}{\sum_{k=1}^K{w_k}}$</td>
+    <td id="center">
+      <a href="https://www.codecogs.com/eqnedit.php?latex=\rho_k&space;=&space;\frac{w_k}{\sum_{k=1}^K{w_k}}" target="_blank">  
+        <img src="https://latex.codecogs.com/gif.latex?\rho_k&space;=&space;\frac{w_k}{\sum_{k=1}^K{w_k}}" title="\rho_k = \frac{w_k}{\sum_{k=1}^K{w_k}}" />
+      </a>
+     </td>
     <td>Target treatment allocation proportions $0 < \rho_k < 1$ and $\sum_{k=1}^K{\rho_k}=1$</td>
   </tr>
   <tr>
