@@ -1,6 +1,6 @@
 # artool
 
-***A*** daptive ***R*** andomization tool for clinical trials.
+***A***daptive ***R***andomization tool for clinical trials.
 
 The aim of the package is modelling and simulations of clinical trials with different randomiztion techniques such as
 
