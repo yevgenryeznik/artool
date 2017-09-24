@@ -8,7 +8,7 @@
 #
 
 library(shiny)
-library(rartool)
+library(artool)
 
 # Define UI for application
 choices <- c("CRD", "PBD", "BUD", "MWUD", "DL", "DBCD", "MinQD", "MaxEnt")
@@ -20,18 +20,19 @@ shinyUI(fluidPage(
   # Sidebar with a slider input for number of bins
   sidebarLayout(
     sidebarPanel(
-      textInput('w', 'Fixed allocation ration (comma delimited)', "2, 1"),
-      textInput('nsbj', 'Number of subjects', "50"),
-      textInput('nsim', 'Number of simulations', "100"),
-      textInput('alpha', 'Type I error', "0.05"),
+      textInput('w', 'Fixed allocation ratio (comma delimited)', "4, 3, 2, 1"),
+      textInput('nsbj', 'Number of subjects', "200"),
+      textInput('nsim', 'Number of simulations', "1000"),
+      tags$b("Response: Normal"),
+      wellPanel(
+        textInput('resp_mean', 'Means (comma delimited)', "0, 0, 0, 0"),
+        textInput('resp_sd', 'SDs (comma delimited)', "1, 1, 1, 1")
+      ),
+      textInput('alpha', 'Significance level', "0.05"),
       tags$b("Randomization procedures"),
       wellPanel(
       fluidRow(
-        div(style="display:inline-block",checkboxInput("proc1_check", "CRD", 1))#,
-        #div(style="display:inline-block",selectInput("proc1_name", "", choices, "CRD",width='100px'),
-        #    tags$head(tags$style(type="text/css", "#proc1_name {max-width: 150px}"))),
-        #div(style="display:inline-block",textInput("proc1_param", "", "NA", width = '50px'),
-        #    tags$head(tags$style(type="text/css", "#proc1_param {max-width: 150px}")))
+        div(style="display:inline-block",checkboxInput("proc1_check", "CRD", 1))
       ),
       fluidRow(
         div(style="display:inline-block",checkboxInput("proc2_check", "", 1)),
@@ -91,30 +92,30 @@ shinyUI(fluidPage(
       tabsetPanel(
         tabPanel("Proportions Boxplots",
                  p(),
-                 p("The plot below shows distributions of subjects proportions per treatment."),
+                 p("The plot below shows distributions of subjects' allocation proportions per treatment arm."),
                  p(),
-                 plotOutput("prop_boxplot", width = "100%", height = "1000px")),
+                 plotOutput("allocation_boxplot", width = "100%", height = "1000px")),
 
         tabPanel("Unconditional Allocation Probability",
                  p(),
                  p("The plot below shows unconditional allocation probability per treatment for given designs."),
                  p(),
-                 plotOutput("pi_mean_plot", width = "100%", height = "1000px")),
+                 plotOutput("probability_plot", width = "100%", height = "1000px")),
 
-        tabPanel("Imbalance/Forcing Index",
+        tabPanel("Imbalance/Forcing Index/Momentum of Probability Mass",
                  p(),
-                 p("The plots below show maximum imbalance and median FI for given designs."),
+                 p("The plots below show maximum imbalance (MI), average FI (AFI), and average momentum of probability mass (AMPM) for given designs."),
                  p(),
-                 plotOutput("imbalance_plot", width = "100%", height = "1000px")),
+                 plotOutput("op_plot", width = "100%", height = "1000px")),
         tabPanel("Overall Performance",
                  p(),
                  p(),
-                 tableOutput("performance_table")),
+                 tableOutput("ovp_table")),
         tabPanel("Type I error",
                  p(),
-                 p("The plots below show the type I error control through the simulations."),
+                 p("The plots below show the type I error/power control through the simulations."),
                  p(),
-                 plotOutput("typeIerror_plot", width = "100%", height = "1000px")),
+                 plotOutput("tIerror_plot", width = "100%", height = "1000px")),
         tabPanel("Read Me (Description)",
                  p(),
                  includeHTML("description.html"))
