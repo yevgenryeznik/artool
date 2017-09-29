@@ -21,10 +21,12 @@
 #'       \item \code{response} -- a vector of responses,
 #'       \item \code{Imb} -- a vector of imbalances at each step,
 #'       \item \code{FI} -- a vector of forcing indecies at each step,
-#'       \item \code{MPM1} -- a evvctor of momentums of probability mass based on expected
+#'       \item \code{MPM1} -- a vector of momentums of probability mass based on expected
 #'             \emph{predicted} imbalance,
+#'       \item \code{CMPM1} -- cumulative MPM1
 #'       \item \code{MPM2} -- a vector of momentums of probability mass based on the expected
 #'              imbalance,
+#'       \item \code{CMPM2} -- cumulative MPM2
 #'       \item \code{probability} -- a matrix with allocation probabilities at each step,
 #'       \item \code{allocation} -- a matrix of allocation proportions at each step.
 #'    }
@@ -71,7 +73,9 @@ rr <- function(nsbj, w, proc, proc_param, distr, distr_param) {
 #'              \item{\code{MI} -- maximum imbalance,}
 #'              \item{\code{AFI} -- average forcing index,}
 #'              \item{\code{AMPM1} -- average momentum of probability mass based on expected \emph{predicted} imbalance,}
+#'              \item{\code{ACMPM1} -- average cumulative momentum of probability mass based on expected \emph{predicted} imbalance,}
 #'              \item{\code{AMPM2} -- average momentum of probability mass based on the expected imbalance,}
+#'              \item{\code{ACMPM2} -- average cumulative momentum of probability mass based on expected \emph{predicted} imbalance,}
 #'              \item{\code{ASD} -- average standard deviation of allocation proportions,}
 #'          }
 #'       }
@@ -123,8 +127,10 @@ simulate_rr <- function(nsim, nsbj, w, proc, proc_param, distr, distr_param) {
                    subject, 
                    MI = trial$MI, 
                    AFI = trial$AFI, 
-                   AMPM1 = trial$AMPM1, 
-                   AMPM2 = trial$AMPM2) %>%
+                   AMPM1 = trial$AMPM1,
+                   ACMPM1 = trial$ACMPM1,
+                   AMPM2 = trial$AMPM2, 
+                   ACMPM2 = trial$ACMPM2) %>%
     inner_join(ASD, by = c("target", "design", "procedure", "subject"))
   
   # unconditional allocation probabilities

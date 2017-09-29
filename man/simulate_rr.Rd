@@ -39,7 +39,9 @@ a list with three items:
              \item{\code{MI} -- maximum imbalance,}
              \item{\code{AFI} -- average forcing index,}
              \item{\code{AMPM1} -- average momentum of probability mass based on expected \emph{predicted} imbalance,}
+             \item{\code{ACMPM1} -- average cumulative momentum of probability mass based on expected \emph{predicted} imbalance,}
              \item{\code{AMPM2} -- average momentum of probability mass based on the expected imbalance,}
+             \item{\code{ACMPM2} -- average cumulative momentum of probability mass based on expected \emph{predicted} imbalance,}
              \item{\code{ASD} -- average standard deviation of allocation proportions,}
          }
       }

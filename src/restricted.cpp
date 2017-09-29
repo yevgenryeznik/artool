@@ -302,12 +302,13 @@ List restricted(int number_of_subjects, IntegerVector w, std::string procedure, 
   NumericVector fi(number_of_subjects);
   NumericVector forcing_index(number_of_subjects);
 
-  // momentum of probability mass
-  NumericVector mpm1_(number_of_subjects);
-  NumericVector mpm1(number_of_subjects);
+  // momentum of probability mass based on the concept of expected predicted imbalance
+  NumericVector mpm1(number_of_subjects);  // at a given sample size
+  NumericVector cmpm1(number_of_subjects); // cumulative
   
-  NumericVector mpm2_(number_of_subjects);
-  NumericVector mpm2(number_of_subjects);
+  // momentum of probability mass based on the concept of expected imbalance
+  NumericVector mpm2(number_of_subjects); // at a given sample size
+  NumericVector cmpm2(number_of_subjects);// cumulative
 
   // List with current assignment
   List assignment;
@@ -334,8 +335,8 @@ List restricted(int number_of_subjects, IntegerVector w, std::string procedure, 
 
     // imbalance
     imbalance[j-1] = sqrt((float)sum(Rcpp::pow(as<NumericVector>(N) - j*rho, 2)))/j;
-    mpm2_[j-1] = imbalance[j-1]*j;
-    mpm2[j-1] = mean(mpm2_[seq(0, j-1)]);
+    mpm2[j-1] = imbalance[j-1]*j;
+    cmpm2[j-1] = mean(mpm2[seq(0, j-1)]);
     
     // forcing index
     fi[j-1] = sum(Rcpp::pow(probability.row(j-1)-rho, 2));
@@ -344,10 +345,10 @@ List restricted(int number_of_subjects, IntegerVector w, std::string procedure, 
     // momentum of probability mass
     for (int k = 1; k <= number_of_treatments; k++) {
       N1[k-1] += 1;
-      mpm1_[j-1] += probability.row(j-1)[k-1]*sqrt((float)sum(Rcpp::pow(as<NumericVector>(N1) - j*rho, 2)));
+      mpm1[j-1] += probability.row(j-1)[k-1]*sqrt((float)sum(Rcpp::pow(as<NumericVector>(N1) - j*rho, 2)));
       N1[k-1] -= 1;
     }
-    mpm1[j-1] = mean(mpm1_[seq(0, j-1)]);
+    cmpm1[j-1] = mean(mpm1[seq(0, j-1)]);
     
   }  
   
@@ -358,7 +359,9 @@ List restricted(int number_of_subjects, IntegerVector w, std::string procedure, 
                       _["Imb"] = imbalance,
                       _["FI"] = forcing_index,
                       _["MPM1"] = mpm1, 
+                      _["CMPM1"] = cmpm1, 
                       _["MPM2"] = mpm2, 
+                      _["CMPM2"] = cmpm2, 
                       _["probability"] = probability, 
                       _["allocation"] = allocation);
 }
@@ -379,7 +382,9 @@ List simulate_restricted(int number_of_simulations,
   NumericMatrix Imb(number_of_simulations, number_of_subjects);
   NumericMatrix FI(number_of_simulations, number_of_subjects);
   NumericMatrix MPM1(number_of_simulations, number_of_subjects);
+  NumericMatrix CMPM1(number_of_simulations, number_of_subjects);
   NumericMatrix MPM2(number_of_simulations, number_of_subjects);
+  NumericMatrix CMPM2(number_of_simulations, number_of_subjects);
   NumericMatrix Prob(number_of_subjects, w.size());
   List PropList(number_of_simulations);
   
@@ -388,7 +393,7 @@ List simulate_restricted(int number_of_simulations,
   // run trial number_of_simulations times
   IntegerVector simulations = seq_len(number_of_simulations)-1;
   for_each(simulations.begin(), simulations.end(), 
-           [&treatment, &response, &Imb, &FI, &MPM1, &MPM2, &Prob, &PropList,
+           [&treatment, &response, &Imb, &FI, &MPM1, &CMPM1, &MPM2, &CMPM2, &Prob, &PropList,
             number_of_subjects, w, procedure, p, distribution, parameter](int &s){
               
               List trial = restricted(number_of_subjects, w, procedure, p, distribution, parameter);
@@ -407,17 +412,19 @@ List simulate_restricted(int number_of_simulations,
               
               // momentum of probbaility mass vs subject within s-th simulation
               MPM1.row(s) = as<NumericVector>(trial[4]); // Alex' approach
-              MPM2.row(s) = as<NumericVector>(trial[5]); // Olga's approach
+              CMPM1.row(s) = as<NumericVector>(trial[5]); // Olga's approach
               
+              MPM2.row(s) = as<NumericVector>(trial[6]); // Alex' approach
+              CMPM2.row(s) = as<NumericVector>(trial[7]); // Olga's approach
               // unconditional allocation probability
               IntegerVector trt = seq_len(w.size());
               for_each(trt.begin(), trt.end(), [&Prob, trial](int k){
-                Prob.column(k-1) = Prob.column(k-1)+as<NumericMatrix>(trial[6]).column(k-1);
+                Prob.column(k-1) = Prob.column(k-1)+as<NumericMatrix>(trial[8]).column(k-1);
               }); 
               
               
               // allocation proportions
-              PropList[s] = as<NumericMatrix>(trial[7]);
+              PropList[s] = as<NumericMatrix>(trial[9]);
               
             });
   
@@ -425,16 +432,20 @@ List simulate_restricted(int number_of_simulations,
   NumericVector MI(number_of_subjects);
   NumericVector AFI(number_of_subjects);
   NumericVector AMPM1(number_of_subjects);
+  NumericVector ACMPM1(number_of_subjects);
   NumericVector AMPM2(number_of_subjects);
+  NumericVector ACMPM2(number_of_subjects);
   
   IntegerVector subject = seq_len(number_of_subjects);
   for_each(subject.begin(), subject.end(), 
-           [Imb, FI, MPM1, MPM2, PropList, w, 
-            &MI, &AFI, &AMPM1, &AMPM2](int &j) {
+           [Imb, FI, MPM1, CMPM1, MPM2, CMPM2, PropList, w, 
+            &MI, &AFI, &AMPM1, &ACMPM1, &AMPM2, &ACMPM2](int &j) {
               MI[j-1] = max(Imb.column(j-1));          // maximum imbalance
               AFI[j-1] = mean(FI.column(j-1));         // average FI
-              AMPM1[j-1] = mean(MPM1.column(j-1));     // average MPM1 (Alex' approach)
-              AMPM2[j-1] = mean(MPM2.column(j-1));     // average MPM2 (Olga's approach)
+              AMPM1[j-1] = mean(MPM1.column(j-1));     // average MPM1 (predicted expected imbalance)
+              ACMPM1[j-1] = mean(CMPM1.column(j-1));   // average cumulative MPM1
+              AMPM2[j-1] = mean(MPM2.column(j-1));     // average MPM2 (expected imbalance)
+              ACMPM2[j-1] = mean(CMPM2.column(j-1));   // average cumulative MPM2 
             });
   
   
@@ -443,7 +454,9 @@ List simulate_restricted(int number_of_simulations,
                       _["MI"] = MI,
                       _["AFI"] = AFI,
                       _["AMPM1"] = AMPM1, 
-                      _["AMPM2"] = AMPM2,
+                      _["ACMPM1"] = ACMPM1,
+                      _["AMPM2"] = AMPM2, 
+                      _["ACMPM2"] = ACMPM2,
                       _["Probability"] = Prob/number_of_simulations, 
                       _["Allocation"] = PropList);
   

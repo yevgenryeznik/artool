@@ -30,10 +30,12 @@ a list with three items:
       \item \code{response} -- a vector of responses,
       \item \code{Imb} -- a vector of imbalances at each step,
       \item \code{FI} -- a vector of forcing indecies at each step,
-      \item \code{MPM1} -- a evvctor of momentums of probability mass based on expected
+      \item \code{MPM1} -- a vector of momentums of probability mass based on expected
             \emph{predicted} imbalance,
+      \item \code{CMPM1} -- cumulative MPM1
       \item \code{MPM2} -- a vector of momentums of probability mass based on the expected
              imbalance,
+      \item \code{CMPM2} -- cumulative MPM2
       \item \code{probability} -- a matrix with allocation probabilities at each step,
       \item \code{allocation} -- a matrix of allocation proportions at each step.
    }
