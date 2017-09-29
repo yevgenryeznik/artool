@@ -11,4 +11,4 @@ The aim of the package is modelling and simulations of clinical trials with diff
 
 So far, several RR procedures have been implemented.
 
-\int
+$$\int$$
