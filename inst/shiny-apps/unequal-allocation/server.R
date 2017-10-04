@@ -113,21 +113,21 @@ shinyServer(function(input, output) {
     
     
     ovp <- sim_data$op %>%
-      filter(subject == max(.$subject) & variable %in% c("MI", "AFI")) %>%
+      filter(subject == max(.$subject) & variable %in% c("ACMPM2", "AFI")) %>%
       group_by(target, subject)
     
     mi <- ovp %>%
-      filter(procedure %in% c("CRD", "PBD (1)") & variable == "MI") %>%
+      filter(procedure %in% c("CRD", "MaxEnt (1)") & variable == "ACMPM2") %>%
       select(target, subject, procedure, value) %>% 
       spread(procedure, value) %>% 
-      rename(MI_CRD = CRD, MI_PBD1 = `PBD (1)`) %>%
+      rename(ACMPM_CRD = CRD, ACMPM_MaxEnt1 = `MaxEnt (1)`) %>%
       group_by(target, subject)
     
     afi <- ovp %>%
-      filter(procedure %in% c("CRD", "PBD (1)") & variable == "AFI") %>%
+      filter(procedure %in% c("CRD", "MaxEnt (1)") & variable == "AFI") %>%
       select(target, subject, procedure, value) %>% 
       spread(procedure, value) %>% 
-      rename(AFI_CRD = CRD, AFI_PBD1 = `PBD (1)`) %>%
+      rename(AFI_CRD = CRD, AFI_MaxEnt1 = `MaxEnt (1)`) %>%
       group_by(target, subject)
     
     wI <- wR <- 1
@@ -136,12 +136,12 @@ shinyServer(function(input, output) {
       spread(variable, value) %>% 
       inner_join(mi, by = c("target", "subject")) %>%
       inner_join(afi, by = c("target", "subject")) %>%
-      mutate(UI = MI/(MI_CRD-MI_PBD1)-MI_PBD1/(MI_CRD-MI_PBD1),
-             UR = AFI/(AFI_PBD1-AFI_CRD)-AFI_CRD/(AFI_PBD1-AFI_CRD),
+      mutate(UI = ACMPM2/(ACMPM_CRD-ACMPM_MaxEnt1)-ACMPM_MaxEnt1/(ACMPM_CRD-ACMPM_MaxEnt1),
+             UR = AFI/(AFI_MaxEnt1-AFI_CRD)-AFI_CRD/(AFI_MaxEnt1-AFI_CRD),
              G = sqrt(((wI*UI)^2 +(wR*UR)^2)/(wI^2 + wR^2))) %>%
       arrange(G) %>%
       mutate(Rank = seq_len(nrow(.)))%>%
-      .[c("Rank", "procedure", "G", "MI", "AFI")]
+      .[c("Rank", "procedure", "G")]
   })
 
   output$allocation_boxplot <- renderPlot({
