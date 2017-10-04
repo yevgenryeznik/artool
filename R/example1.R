@@ -1,5 +1,7 @@
 #' simulation example for a paper in "Statistics in Medicine"
 #' @param nsim number of simulations
+#'
+#' @export
 
 run_example1 <- function(nsim) {
   # number of simulations
@@ -26,7 +28,11 @@ run_example1 <- function(nsim) {
   # response distribution
   distr <- "normal"
   distr_param_flat <- list(mean = rep(0, 4), sd = rep(1, 4))
-  distr_param_monotone <- list(mean = c(0, 0.2, 0.4, 0.6), sd = rep(1, 4))  
+  # distr_param_monotone <- list(mean = c(0, 0.25, 0.5, 0.75), sd = rep(1, 4))  #example2
+  # distr_param_monotone <- list(mean = c(0, 0.1, 0.25, 0.5), sd = rep(1, 4))  #example3
+  # distr_param_monotone <- list(mean = c(0, 0.1, 0.25, 0.75), sd = rep(1, 4)) #example4
+  # distr_param_monotone <- list(mean = c(0, 0.1, 0.25, 0.6), sd = rep(1, 4))  #example5
+   distr_param_monotone <- list(mean = c(0, 0.1, 0.3, 0.7), sd = rep(1, 4))  #example5
   
   # significance level
   alpha <- 0.05
@@ -94,7 +100,7 @@ run_example1 <- function(nsim) {
 }
 
 
-summary_example1 <- function(data_file = "./data/example1.Rda", summary_folder = "summary_example1") {
+summary_example1 <- function(data_file = "./data/example1.Rda", summary_folder = "summary_example1_eps", ext = ".eps") {
   load(file = data_file)
   
   # colors to use in plots
@@ -110,19 +116,29 @@ summary_example1 <- function(data_file = "./data/example1.Rda", summary_folder =
   # operational characteristics
   op <- example1 %>%
     map(~ {.$op}) %>%
-      bind_rows()
-
+      bind_rows() %>%
+      gather(variable, value, -target, -design, -procedure, -subject) %>%
+      filter(variable %in% c("MI", "AFI", "AMPM2", "ACMPM2")) 
+  
+  target_list <- unique(op$target)
+  op$target <- factor(op$target, levels = target_list, ordered = TRUE)
+    
+  variable_list <- unique(op$variable)
+  variable_labels <- c("maximum imbalance", "average forcing index", "average momentum of probability mass", "average cumulative momentum of probability mass")
+  op$variable <- factor(op$variable, levels = variable_list, labels = variable_labels, ordered = TRUE)
+  #op$variable1 <- factor(op$variable1, levels = variable_list, ordered = TRUE)
+  
   design <- unique(op$design)
   procedure <- unique(op$procedure)
   
   id <- unlist(map(design, 
-      function(design_elem, procedure){
-        designs <- map_chr(procedure, 
-                function(procedure_elem){
-                  strsplit(procedure_elem, " ")[[1]][1]
-                })
-        seq_len(sum(design_elem == designs))
-      }, procedure))
+                   function(design_elem, procedure){
+                     designs <- map_chr(procedure, 
+                                        function(procedure_elem){
+                                          strsplit(procedure_elem, " ")[[1]][1]
+                                        })
+                     seq_len(sum(design_elem == designs))
+                   }, procedure))
   
   color_values <- color[id]
   names(color_values) <- procedure
@@ -133,479 +149,160 @@ summary_example1 <- function(data_file = "./data/example1.Rda", summary_folder =
   design_values <- c(shape, 4, 8)
   names(design_values) <- design
   
-  target_ <- unique(op$target)
+  # with the command below we create a set of plots:
+  #   - MI vs subjcet 
+  #   - AFI vs subject
+  #   - AMPM2 vs subject
+  #   - ACMPM2 vs subject
+  # given target
   
-  # visualize MI vs subject, AFI vs subject, MPM vs subject
-  # MI vs AFI, MI vs MPM, AFI vs MPM
-  map(seq_along(target_), function(i, target_, op){
-      sub_op <- op %>% 
-        filter(target == target_[i]) 
-      
-      # MPM1 vs subject
-      sub_op %>%
-        ggplot(aes(x = subject, y = AMPM1,  group = procedure))+
-        geom_point(aes(shape = procedure, fill = procedure, color = procedure), size = 2)+
-        geom_line(aes(color = procedure), size = 0.1)+
-        scale_shape_manual(values = shape_values)+
-        scale_color_manual(values = color_values)+
-        scale_fill_manual(values = color_values)+
-        facet_wrap(~ design, scales = "free_y", ncol = 1)+
-        xlab("number of subjects")+
-        ylab("AMPM")+
-        ggtitle(paste0("Average Momentum of Probability Mass (AMPM) vs. Number of Subjects: ", target_[i]))+
-        theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
-              axis.title.y = element_text(family = "Helvetica", face = "bold", size = 12),
-              axis.text.x  = element_text(family = "Helvetica", face = "bold", size = 10),
-              axis.text.y  = element_text(family = "Helvetica", face = "bold", size = 10),
-              title = element_text(family = "Helvetica", face = "bold", size = 14),
-              strip.text.x = element_text(family = "Helvetica", face = "bold", size = 10),
-              strip.text.y = element_text(family = "Helvetica", face = "bold", size = 10),
-              legend.position = "right",
-              legend.title = element_blank(),
-              legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
-    
-    ggsave(paste0("./data/", summary_folder, "/", selected, " mpm1_vs_subject (", target_[i],").pdf"), width = 16, height = 9, units = "in")
-    
-    # MPM2 vs subject
-    sub_op %>%
-      ggplot(aes(x = subject, y = AMPM2,  group = procedure))+
-      geom_point(aes(shape = procedure, fill = procedure, color = procedure), size = 2)+
-      geom_line(aes(color = procedure), size = 0.1)+
-      scale_shape_manual(values = shape_values)+
-      scale_color_manual(values = color_values)+
-      scale_fill_manual(values = color_values)+
-      facet_wrap(~ design, scales = "free_y", ncol = 1)+
-      xlab("number of subjects")+
-      ylab("AMPM")+
-      ggtitle(paste0("Average Momentum of Probability Mass (AMPM) vs. Number of Subjects: ", target_[i]))+
-      theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
-            axis.title.y = element_text(family = "Helvetica", face = "bold", size = 12),
-            axis.text.x  = element_text(family = "Helvetica", face = "bold", size = 10),
-            axis.text.y  = element_text(family = "Helvetica", face = "bold", size = 10),
-            title = element_text(family = "Helvetica", face = "bold", size = 14),
-            strip.text.x = element_text(family = "Helvetica", face = "bold", size = 10),
-            strip.text.y = element_text(family = "Helvetica", face = "bold", size = 10),
-            legend.position = "right",
-            legend.title = element_blank(),
-            legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
-    
-    ggsave(paste0("./data/", summary_folder, "/", selected, " mpm2_vs_subject (", target_[i],").pdf"), width = 16, height = 9, units = "in")
-
-    # MI vs subject
-    sub_op %>%
-      ggplot(aes(x = subject, y = MI,  group = procedure))+
-      geom_point(aes(shape = procedure, fill = procedure, color = procedure), size = 2)+
-      geom_line(aes(color = procedure), size = 0.1)+
-      scale_shape_manual(values = shape_values)+
-      scale_color_manual(values = color_values)+
-      scale_fill_manual(values = color_values)+
-      facet_wrap(~ design, scales = "free_y", ncol = 1)+
-      xlab("number of subjects")+
-      ggtitle(paste0("Maximum Imbalance (MI) vs. Number of Subjects: ", target_[i]))+
-      theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
-            axis.title.y = element_text(family = "Helvetica", face = "bold", size = 12),
-            axis.text.x  = element_text(family = "Helvetica", face = "bold", size = 10),
-            axis.text.y  = element_text(family = "Helvetica", face = "bold", size = 10),
-            title = element_text(family = "Helvetica", face = "bold", size = 14),
-            strip.text.x = element_text(family = "Helvetica", face = "bold", size = 10),
-            strip.text.y = element_text(family = "Helvetica", face = "bold", size = 10),
-            legend.position = "right",
-            legend.title = element_blank(),
-            legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
-    
-    ggsave(paste0("./data/", summary_folder, "/", selected, " mi_vs_subject (", target_[i],").pdf"), width = 16, height = 9, units = "in")
-
-    # AFI vs subject
-    sub_op %>%
-      ggplot(aes(x = subject, y = AFI,  group = procedure))+
-      geom_point(aes(shape = procedure, fill = procedure, color = procedure), size = 2)+
-      geom_line(aes(color = procedure), size = 0.1)+
-      scale_shape_manual(values = shape_values)+
-      scale_color_manual(values = color_values)+
-      scale_fill_manual(values = color_values)+
-      facet_wrap(~ design, scales = "free_y", ncol = 1)+
-      xlab("number of subjects")+
-      ggtitle(paste0("Average Forcing Index (AFI) vs. Number of Subjects: ", target_[i]))+
-      theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
-            axis.title.y = element_text(family = "Helvetica", face = "bold", size = 12),
-            axis.text.x  = element_text(family = "Helvetica", face = "bold", size = 10),
-            axis.text.y  = element_text(family = "Helvetica", face = "bold", size = 10),
-            title = element_text(family = "Helvetica", face = "bold", size = 14),
-            strip.text.x = element_text(family = "Helvetica", face = "bold", size = 10),
-            strip.text.y = element_text(family = "Helvetica", face = "bold", size = 10),
-            legend.position = "right",
-            legend.title = element_blank(),
-            legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
-    
-    ggsave(paste0("./data/", summary_folder, "/", selected, " afi_vs_subject (", target_[i],").pdf"), width = 16, height = 9, units = "in")
-    
-    
-    # MPM1 vs MI
-    sub_op %>%
-      ggplot(aes(x = MI, y = AMPM1,  group = procedure))+
-      geom_point(aes(shape = procedure, fill = procedure, color = procedure), size = 2)+
-      geom_line(aes(color = procedure), size = 0.1)+
-      scale_shape_manual(values = shape_values)+
-      scale_color_manual(values = color_values)+
-      scale_fill_manual(values = color_values)+
-      facet_wrap(~ design, scales = "free_y", ncol = 1)+
-      ggtitle(paste0("Average Momentum of Probability Mass (AMPM) vs. Maximum Imbalance: ", target_[i]))+
-      ylab("AMPM")+
-      theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
-            axis.title.y = element_text(family = "Helvetica", face = "bold", size = 12),
-            axis.text.x  = element_text(family = "Helvetica", face = "bold", size = 10),
-            axis.text.y  = element_text(family = "Helvetica", face = "bold", size = 10),
-            title = element_text(family = "Helvetica", face = "bold", size = 14),
-            strip.text.x = element_text(family = "Helvetica", face = "bold", size = 10),
-            strip.text.y = element_text(family = "Helvetica", face = "bold", size = 10),
-            legend.position = "right",
-            legend.title = element_blank(),
-            legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
-    
-    ggsave(paste0("./data/", summary_folder, "/", selected, " mpm1_vs_mi (", target_[i],").pdf"), width = 16, height = 9, units = "in")
-    
-    # MPM2 vs MI
-    sub_op %>%
-      ggplot(aes(x = MI, y = AMPM2,  group = procedure))+
-      geom_point(aes(shape = procedure, fill = procedure, color = procedure), size = 2)+
-      geom_line(aes(color = procedure), size = 0.1)+
-      scale_shape_manual(values = shape_values)+
-      scale_color_manual(values = color_values)+
-      scale_fill_manual(values = color_values)+
-      facet_wrap(~ design, scales = "free_y", ncol = 1)+
-      ggtitle(paste0("Average Momentum of Probability Mass (AMPM) vs. Maximum Imbalance: ", target_[i]))+
-      ylab("AMPM")+
-      theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
-            axis.title.y = element_text(family = "Helvetica", face = "bold", size = 12),
-            axis.text.x  = element_text(family = "Helvetica", face = "bold", size = 10),
-            axis.text.y  = element_text(family = "Helvetica", face = "bold", size = 10),
-            title = element_text(family = "Helvetica", face = "bold", size = 14),
-            strip.text.x = element_text(family = "Helvetica", face = "bold", size = 10),
-            strip.text.y = element_text(family = "Helvetica", face = "bold", size = 10),
-            legend.position = "right",
-            legend.title = element_blank(),
-            legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
-    
-    ggsave(paste0("./data/", summary_folder, "/", selected, " mpm2_vs_mi (", target_[i],").pdf"), width = 16, height = 9, units = "in")
-    
-    # AFI vs MI
-    sub_op %>%
-      ggplot(aes(x = MI, y = AFI,  group = procedure))+
-      geom_point(aes(shape = procedure, fill = procedure, color = procedure), size = 2)+
-      geom_line(aes(color = procedure), size = 0.1)+
-      scale_shape_manual(values = shape_values)+
-      scale_color_manual(values = color_values)+
-      scale_fill_manual(values = color_values)+
-      facet_wrap(~ design, scales = "free_y", ncol = 1)+
-      ggtitle(paste0("Average Forcing Index (AFI) vs. Maximum Imbalance: ", target_[i]))+
-      theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
-            axis.title.y = element_text(family = "Helvetica", face = "bold", size = 12),
-            axis.text.x  = element_text(family = "Helvetica", face = "bold", size = 10),
-            axis.text.y  = element_text(family = "Helvetica", face = "bold", size = 10),
-            title = element_text(family = "Helvetica", face = "bold", size = 14),
-            strip.text.x = element_text(family = "Helvetica", face = "bold", size = 10),
-            strip.text.y = element_text(family = "Helvetica", face = "bold", size = 10),
-            legend.position = "right",
-            legend.title = element_blank(),
-            legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
-    
-    ggsave(paste0("./data/", summary_folder, "/", selected, " afi_vs_mi (", target_[i],").pdf"), width = 16, height = 9, units = "in")
-    
-    # MPM1 vs AFI
-    sub_op %>%
-      ggplot(aes(x = AFI, y = AMPM1,  group = procedure))+
-      geom_point(aes(shape = procedure, fill = procedure, color = procedure), size = 2)+
-      geom_line(aes(color = procedure), size = 0.1)+
-      scale_shape_manual(values = shape_values)+
-      scale_color_manual(values = color_values)+
-      scale_fill_manual(values = color_values)+
-      facet_wrap(~ design, scales = "free", ncol = 1)+
-      ggtitle(paste0("Average Momentum of Probability Mass (AMPM) vs. Average Forcing Index (AFI): ", target_[i]))+
-      ylab("AMPM")+
-      theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
-            axis.title.y = element_text(family = "Helvetica", face = "bold", size = 12),
-            axis.text.x  = element_text(family = "Helvetica", face = "bold", size = 10),
-            axis.text.y  = element_text(family = "Helvetica", face = "bold", size = 10),
-            title = element_text(family = "Helvetica", face = "bold", size = 14),
-            strip.text.x = element_text(family = "Helvetica", face = "bold", size = 10),
-            strip.text.y = element_text(family = "Helvetica", face = "bold", size = 10),
-            legend.position = "right",
-            legend.title = element_blank(),
-            legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
-    
-    ggsave(paste0("./data/", summary_folder, "/", selected, " mpm1_vs_afi (", target_[i],").pdf"), width = 16, height = 9, units = "in")
-    
-    # AFI vs MPM1
-    sub_op %>%
-      ggplot(aes(y = AFI, x = AMPM1,  group = procedure))+
-      geom_point(aes(shape = procedure, fill = procedure, color = procedure), size = 2)+
-      geom_line(aes(color = procedure), size = 0.1)+
-      scale_shape_manual(values = shape_values)+
-      scale_color_manual(values = color_values)+
-      scale_fill_manual(values = color_values)+
-      facet_wrap(~ design, scales = "free", ncol = 1)+
-      ggtitle(paste0("Average Forcing Index (AFI) vs. Average Momentum of Probability Mass (AMPM): ", target_[i]))+
-      xlab("AMPM")+
-      theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
-            axis.title.y = element_text(family = "Helvetica", face = "bold", size = 12),
-            axis.text.x  = element_text(family = "Helvetica", face = "bold", size = 10),
-            axis.text.y  = element_text(family = "Helvetica", face = "bold", size = 10),
-            title = element_text(family = "Helvetica", face = "bold", size = 14),
-            strip.text.x = element_text(family = "Helvetica", face = "bold", size = 10),
-            strip.text.y = element_text(family = "Helvetica", face = "bold", size = 10),
-            legend.position = "right",
-            legend.title = element_blank(),
-            legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
-    
-    ggsave(paste0("./data/", summary_folder, "/", selected, " afi_vs_mpm1 (", target_[i],").pdf"), width = 16, height = 9, units = "in")
-
-    # MPM2 vs AFI
-    sub_op %>%
-      ggplot(aes(x = AFI, y = AMPM2,  group = procedure))+
-      geom_point(aes(shape = procedure, fill = procedure, color = procedure), size = 2)+
-      geom_line(aes(color = procedure), size = 0.1)+
-      scale_shape_manual(values = shape_values)+
-      scale_color_manual(values = color_values)+
-      scale_fill_manual(values = color_values)+
-      facet_wrap(~ design, scales = "free", ncol = 1)+
-      ggtitle(paste0("Average Momentum of Probability Mass (AMPM) vs. Average Forcing Index (AFI): ", target_[i]))+
-      ylab("AMPM")+
-      theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
-            axis.title.y = element_text(family = "Helvetica", face = "bold", size = 12),
-            axis.text.x  = element_text(family = "Helvetica", face = "bold", size = 10),
-            axis.text.y  = element_text(family = "Helvetica", face = "bold", size = 10),
-            title = element_text(family = "Helvetica", face = "bold", size = 14),
-            strip.text.x = element_text(family = "Helvetica", face = "bold", size = 10),
-            strip.text.y = element_text(family = "Helvetica", face = "bold", size = 10),
-            legend.position = "right",
-            legend.title = element_blank(),
-            legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
-    
-    ggsave(paste0("./data/", summary_folder, "/", selected, " mpm2_vs_afi (", target_[i],").pdf"), width = 16, height = 9, units = "in")
-    
-    # AFI vs MPM2
-    sub_op %>%
-      ggplot(aes(y = AFI, x = AMPM2,  group = procedure))+
-      geom_point(aes(shape = procedure, fill = procedure, color = procedure), size = 2)+
-      geom_line(aes(color = procedure), size = 0.1)+
-      scale_shape_manual(values = shape_values)+
-      scale_color_manual(values = color_values)+
-      scale_fill_manual(values = color_values)+
-      facet_wrap(~ design, scales = "free", ncol = 1)+
-      ggtitle(paste0("Average Forcing Index (AFI) vs. Average Momentum of Probability Mass (AMPM): ", target_[i]))+
-      xlab("AMPM")+
-      theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
-            axis.title.y = element_text(family = "Helvetica", face = "bold", size = 12),
-            axis.text.x  = element_text(family = "Helvetica", face = "bold", size = 10),
-            axis.text.y  = element_text(family = "Helvetica", face = "bold", size = 10),
-            title = element_text(family = "Helvetica", face = "bold", size = 14),
-            strip.text.x = element_text(family = "Helvetica", face = "bold", size = 10),
-            strip.text.y = element_text(family = "Helvetica", face = "bold", size = 10),
-            legend.position = "right",
-            legend.title = element_blank(),
-            legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
-    
-    ggsave(paste0("./data/", summary_folder, "/", selected, " afi_vs_mpm2 (", target_[i],").pdf"), width = 16, height = 9, units = "in")
-    
-  }, target_, op) 
+  op_plots <- op %>% 
+    group_by(target, variable, variable) %>% 
+    do(plot = ggplot(data = ., aes(x = subject, y = value, group = procedure))+
+         geom_point(aes(shape = procedure, fill = procedure, color = procedure), size = 2)+
+         geom_line(aes(color = procedure), size = 0.1)+
+         scale_shape_manual(values = shape_values)+
+         scale_color_manual(values = color_values)+
+         scale_fill_manual(values = color_values)+
+         facet_wrap(~ design, scales = "free_y", ncol = 1)+
+         xlab("number of subjects")+
+         theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
+               axis.title.y = element_text(family = "Helvetica", face = "bold", size = 12),
+               axis.text.x  = element_text(family = "Helvetica", face = "bold", size = 10),
+               axis.text.y  = element_text(family = "Helvetica", face = "bold", size = 10),
+               title = element_text(family = "Helvetica", face = "bold", size = 14),
+               strip.text.x = element_text(family = "Helvetica", face = "bold", size = 10),
+               strip.text.y = element_text(family = "Helvetica", face = "bold", size = 10),
+               legend.position = "right",
+               legend.title = element_blank(),
+               legend.text  = element_text(family = "Helvetica", face = "bold", size = 10)))
   
-  # ===============================================
+  for (i in seq_len(nrow(op_plots))) {
+    op_plots$plot[[i]]$labels$y <- as.character(op_plots$variable[i])
+  }
+  
+  op_plot_files <- map2(op_plots$variable, op_plots$target, ~ paste0("./data/", summary_folder, "/", selected, " ", .x, "_vs_subject, ", .y, ext))
+  map2(op_plot_files, op_plots$plot , ggsave, width = 16, height = 9, units = "in", dpi = 300)
+  
   
   # overall performance
-  ovp <- op %>%
+  ovp <- op %>% 
+    spread(variable, value) %>%
     group_by(target, subject)
   
   mi <- ovp %>%
-    filter(procedure %in% c("CRD", "PBD (1)")) %>%
-    .[, c("target", "procedure", "subject", "MI")] %>%
-    spread(procedure, MI) %>% 
-    rename(MI_CRD = CRD, MI_PBD1 = `PBD (1)`) %>%
+    filter(procedure %in% c("CRD", "MaxEnt (1)")) %>%
+    select(target, procedure, subject, ACMPM = `average cumulative momentum of probability mass`) %>%
+    spread(procedure, ACMPM) %>% 
+    rename(ACMPM_CRD = CRD, ACMPM_MaxEnt1 = `MaxEnt (1)`) %>%
     group_by(target, subject)
   
   afi <- ovp %>%
-    filter(procedure %in% c("CRD", "PBD (1)")) %>%
-    .[, c("target", "procedure", "subject", "AFI")] %>%
+    filter(procedure %in% c("CRD", "MaxEnt (1)")) %>%
+    select(target, procedure, subject, AFI = `average forcing index`) %>%
     spread(procedure, AFI) %>% 
-    rename(AFI_CRD = CRD, AFI_PBD1 = `PBD (1)`) %>%
+    rename(AFI_CRD = CRD, AFI_MaxEnt1 = `MaxEnt (1)`) %>%
     group_by(target, subject)
   
   wI <- wR <- 1
   ovpG <- ovp %>%
+    select(target, 
+           design, 
+           procedure, 
+           subject, 
+           ACMPM = `average cumulative momentum of probability mass`,
+           AFI = `average forcing index`) %>%
     inner_join(mi, by = c("target", "subject")) %>%
     inner_join(afi, by = c("target", "subject")) %>%
-    mutate(UI = MI/(MI_CRD-MI_PBD1)-MI_PBD1/(MI_CRD-MI_PBD1),
-           UR = AFI/(AFI_PBD1-AFI_CRD)-AFI_CRD/(AFI_PBD1-AFI_CRD),
+    mutate(UI = ACMPM/(ACMPM_CRD-ACMPM_MaxEnt1)-ACMPM_MaxEnt1/(ACMPM_CRD-ACMPM_MaxEnt1),
+           UR = AFI/(AFI_MaxEnt1-AFI_CRD)-AFI_CRD/(AFI_MaxEnt1-AFI_CRD),
            G = sqrt(((wI*UI)^2 +(wR*UR)^2)/(wI^2 + wR^2))) %>%
-    .[, c("target", "design", "procedure", "subject", "G")]
+    select(target, design, procedure, subject, G) %>%
+    filter(!is.nan(G))
   
-  target_ <- unique(ovpG$target)
+  # heat map plots
+  ovpG_plots <- ovpG %>%
+    group_by(target) %>%
+    do(plot = ggplot(data = ., aes(subject, procedure)) +
+         geom_tile(aes(fill=G))+
+         scale_fill_gradientn(colors = rainbow(7))+
+         scale_x_continuous(breaks = c(1, seq(25, 200, by = 25)))+
+         xlab("number of subjects")+
+         theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
+               axis.title.y = element_text(family = "Helvetica", face = "bold", size = 12),
+               axis.text.x  = element_text(family = "Helvetica", face = "bold", size = 10),
+               axis.text.y  = element_text(family = "Helvetica", face = "bold", size = 10),
+               title = element_text(family = "Helvetica", face = "bold", size = 14),
+               strip.text.x = element_text(family = "Helvetica", face = "bold", size = 10),
+               strip.text.y = element_text(family = "Helvetica", face = "bold", size = 10),
+               legend.position = "right",
+               legend.title = element_blank(),
+               legend.text  = element_text(family = "Helvetica", face = "bold", size = 10)))
   
-  # plot ovp heatmaps G vs. (procedure, number of subjects)
-  map(seq_along(target_), function(i, target_, ovpG){
-    sub_ovpG <- ovpG %>% 
-      filter(!is.nan(G)  & subject > ifelse(i == 4, 99, 9) & target == target_[i]) %>% 
-      .[, c("G", "target", "design", "procedure", "subject")] 
-    
-    sub_ovpG %>%
-      ggplot(aes(subject, procedure)) +
-      geom_tile(aes(fill=G))+
-      scale_fill_gradientn(colors = rainbow(7))+
-      scale_x_continuous(breaks = c(10, seq(25, 200, by = 25)))+
-      ggtitle(paste0("Overall performance: ", target_[i]))+
-      xlab("number of subjects")+
-      theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
-            axis.title.y = element_text(family = "Helvetica", face = "bold", size = 12),
-            axis.text.x  = element_text(family = "Helvetica", face = "bold", size = 10),
-            axis.text.y  = element_text(family = "Helvetica", face = "bold", size = 10),
-            title = element_text(family = "Helvetica", face = "bold", size = 14),
-            strip.text.x = element_text(family = "Helvetica", face = "bold", size = 10),
-            strip.text.y = element_text(family = "Helvetica", face = "bold", size = 10),
-            legend.position = "right",
-            legend.title = element_blank(),
-            legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
-    
-    ggsave(paste0("./data/", summary_folder, "/", selected, " ovp_heatmap (", target_[i],").pdf"), width = 16, height = 9, units = "in")
-    
-  }, target_, ovpG)
+  ovpG_plot_files <- map(ovpG_plots$target, ~ paste0("./data/", summary_folder, "/", selected, " ovpG_heatmap, ", ., ext))
+  map2(ovpG_plot_files, ovpG_plots$plot , ggsave, width = 16, height = 9, units = "in", dpi = 300)
+  
   
   # create *.xlxs file with ovp(s) for a final sample size
   wb <- loadWorkbook(paste0("./data/", summary_folder, "/ovp4.xlsx"), create = TRUE)
-  map(seq_along(target_), function(i, target_, ovpG, wb) {
-    createSheet(wb, name =gsub(":", " ", target_))
-    sub_ovpG <- ovpG %>% 
-      filter(subject == max(.$subject) & target == target_[i]) %>% 
-      .[, c("G", "target", "subject", "procedure")] %>%
-      arrange(G) %>%
-      .[, c("procedure", "G")] %>%
-      mutate(rank = seq_along(.$G)) 
+  ovpG_xlsx <- ovpG %>% 
+    select(target, procedure, subject, G) %>%
+    group_by(target) %>% 
+    filter(subject == max(subject)) %>%
+    arrange(target, G) %>%
+    select(target, procedure, G) %>%
+    group_by(target) %>%
+    mutate(rank = seq_along(G))
+  
+  map(seq_along(target_list), function(i, target_, ovpG_xlsx, wb) {
+    createSheet(wb, name = target_[i])
+    ovpG_xlsx_sheet <- ovpG_xlsx %>% 
+      ungroup() %>%
+      filter(target == target_[i]) %>% 
+      select(rank, procedure, G)
 
-    writeWorksheet(wb, sub_ovpG, sheet = gsub(":", " ", target_[i]))
+    writeWorksheet(wb, ovpG_xlsx_sheet, sheet = target_[i])
     
-  }, target_, ovpG, wb)
+  }, target_list, ovpG_xlsx, wb)
   saveWorkbook(wb) 
   
   # ===============================================
 
-  # AFI vs MI scatter plot
-  op %>%
-    filter(subject %in% c(25, 50, 100, 200)) %>%
-    ggplot(aes(x = MI, y = AFI,  group = procedure))+
-    geom_point(aes(shape = design, fill = procedure, color = procedure), size = 4)+
-    scale_shape_manual(values = design_values)+
-    scale_color_manual(values = color_values)+
-    scale_fill_manual(values = color_values)+
-    facet_grid(target ~ subject, scales = "free")+
-    ggtitle("Average Forcing Index (AFI) vs. Maximum Imbalance (MI)")+
-    theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
-          axis.title.y = element_text(family = "Helvetica", face = "bold", size = 12),
-          axis.text.x  = element_text(family = "Helvetica", face = "bold", size = 10),
-          axis.text.y  = element_text(family = "Helvetica", face = "bold", size = 10),
-          title = element_text(family = "Helvetica", face = "bold", size = 14),
-          strip.text.x = element_text(family = "Helvetica", face = "bold", size = 10),
-          strip.text.y = element_text(family = "Helvetica", face = "bold", size = 10),
-          legend.position = "right",
-          legend.title = element_blank(),
-          legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
+  # AFI vs AMPM2 scatter plot
+  op_sc <-  op %>% 
+    filter(subject %in% c(25, 50, 100, 200) & 
+           variable %in% c("average cumulative momentum of probability mass",
+                           "average momentum of probability mass",
+                           "average forcing index")) %>%
+    spread(variable, value) %>%
+    select(target, design, procedure, subject, 
+           AFI = `average forcing index`,
+           AMPM = `average momentum of probability mass`,
+           ACMPM = `average cumulative momentum of probability mass`)
+    #group_by(target) %>% 
+  op_sc %>%
+    ggplot(aes(x = ACMPM, y = AFI, group = procedure))+
+         geom_point(aes(shape = design, fill = procedure, color = procedure), size = 4)+
+         scale_shape_manual(values = design_values)+
+         scale_color_manual(values = color_values)+
+         scale_fill_manual(values = color_values)+
+         facet_grid(target ~ subject, scales = "free")+
+         #ggtitle("Average Forcing Index (AFI) vs. Average Momentum of Probability Mass (AMPM)")+
+         xlab("average cumulative momentum of probability mass (ACMPM)")+
+         ylab("average forcing index (AFI)")+
+         theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
+               axis.title.y = element_text(family = "Helvetica", face = "bold", size = 12),
+               axis.text.x  = element_text(family = "Helvetica", face = "bold", size = 10),
+               axis.text.y  = element_text(family = "Helvetica", face = "bold", size = 10),
+               title = element_text(family = "Helvetica", face = "bold", size = 14),
+               strip.text.x = element_text(family = "Helvetica", face = "bold", size = 10),
+               strip.text.y = element_text(family = "Helvetica", face = "bold", size = 10),
+               legend.position = "right",
+               legend.title = element_blank(),
+               legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
   
-  ggsave(paste0("./data/", summary_folder, "/", selected, " afi_vs_mi_selected_subjects", ".pdf"), width = 16, height = 9, units = "in")
-  
-  # MPM1 vs MI scatter plot
-  op %>%
-    filter(subject %in% c(25, 50, 100, 200)) %>%
-    ggplot(aes(x = MI, y = AMPM1,  group = procedure))+
-    geom_point(aes(shape = design, fill = procedure, color = procedure), size = 4)+
-    scale_shape_manual(values = design_values)+
-    scale_color_manual(values = color_values)+
-    scale_fill_manual(values = color_values)+
-    facet_grid(target ~ subject, scales = "free")+
-    ggtitle("Average Momentum of Probability Mass (AMPM) vs. Maximum Imbalance (MI)")+
-    ylab("AMPM")+
-    theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
-          axis.title.y = element_text(family = "Helvetica", face = "bold", size = 12),
-          axis.text.x  = element_text(family = "Helvetica", face = "bold", size = 10),
-          axis.text.y  = element_text(family = "Helvetica", face = "bold", size = 10),
-          title = element_text(family = "Helvetica", face = "bold", size = 14),
-          strip.text.x = element_text(family = "Helvetica", face = "bold", size = 10),
-          strip.text.y = element_text(family = "Helvetica", face = "bold", size = 10),
-          legend.position = "right",
-          legend.title = element_blank(),
-          legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
-  
-  ggsave(paste0("./data/", summary_folder, "/", selected, " mpm1_vs_mi_selected_subjects", ".pdf"), width = 16, height = 9, units = "in")
+  ggsave(paste0("./data/", summary_folder, "/", selected, " afi_vs_acmpm2", ext), width = 16, height = 9, units = "in", dpi = 300)
 
-
-  # MPM2 vs MI scatter plot
-  op %>%
-    filter(subject %in% c(25, 50, 100, 200)) %>%
-    ggplot(aes(x = MI, y = AMPM2,  group = procedure))+
-    geom_point(aes(shape = design, fill = procedure, color = procedure), size = 4)+
-    scale_shape_manual(values = design_values)+
-    scale_color_manual(values = color_values)+
-    scale_fill_manual(values = color_values)+
-    facet_grid(target ~ subject, scales = "free")+
-    ggtitle("Average Momentum of Probability Mass (AMPM) vs. Maximum Imbalance (MI)")+
-    ylab("AMPM")+
-    theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
-          axis.title.y = element_text(family = "Helvetica", face = "bold", size = 12),
-          axis.text.x  = element_text(family = "Helvetica", face = "bold", size = 10),
-          axis.text.y  = element_text(family = "Helvetica", face = "bold", size = 10),
-          title = element_text(family = "Helvetica", face = "bold", size = 14),
-          strip.text.x = element_text(family = "Helvetica", face = "bold", size = 10),
-          strip.text.y = element_text(family = "Helvetica", face = "bold", size = 10),
-          legend.position = "right",
-          legend.title = element_blank(),
-          legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
-  
-  ggsave(paste0("./data/", summary_folder, "/", selected, " mpm2_vs_mi_selected_subjects", ".pdf"), width = 16, height = 9, units = "in")
-
-  # AFI vs MPM1 scatter plot
-  op %>%
-    filter(subject %in% c(25, 50, 100, 200)) %>%
-    ggplot(aes(x = AMPM1, y = AFI,  group = procedure))+
-    geom_point(aes(shape = design, fill = procedure, color = procedure), size = 4)+
-    scale_shape_manual(values = design_values)+
-    scale_color_manual(values = color_values)+
-    scale_fill_manual(values = color_values)+
-    facet_grid(target ~ subject, scales = "free")+
-    ggtitle("Average Forcing Index (AFI) vs. Average Momentum of Probability Mass (AMPM)")+
-    xlab("AMPM")+
-    theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
-          axis.title.y = element_text(family = "Helvetica", face = "bold", size = 12),
-          axis.text.x  = element_text(family = "Helvetica", face = "bold", size = 10),
-          axis.text.y  = element_text(family = "Helvetica", face = "bold", size = 10),
-          title = element_text(family = "Helvetica", face = "bold", size = 14),
-          strip.text.x = element_text(family = "Helvetica", face = "bold", size = 10),
-          strip.text.y = element_text(family = "Helvetica", face = "bold", size = 10),
-          legend.position = "right",
-          legend.title = element_blank(),
-          legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
-  
-  ggsave(paste0("./data/", summary_folder, "/", selected, " afi_vs_mpm1_selected_subjects", ".pdf"), width = 16, height = 9, units = "in")
-  
-  # AFI vs MPM2 scatter plot
-  op %>%
-    filter(subject %in% c(25, 50, 100, 200)) %>%
-    ggplot(aes(x = AMPM2, y = AFI,  group = procedure))+
-    geom_point(aes(shape = design, fill = procedure, color = procedure), size = 4)+
-    scale_shape_manual(values = design_values)+
-    scale_color_manual(values = color_values)+
-    scale_fill_manual(values = color_values)+
-    facet_grid(target ~ subject, scales = "free")+
-    ggtitle("Average Forcing Index (AFI) vs. Average Momentum of Probability Mass (AMPM)")+
-    xlab("AMPM")+
-    theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
-          axis.title.y = element_text(family = "Helvetica", face = "bold", size = 12),
-          axis.text.x  = element_text(family = "Helvetica", face = "bold", size = 10),
-          axis.text.y  = element_text(family = "Helvetica", face = "bold", size = 10),
-          title = element_text(family = "Helvetica", face = "bold", size = 14),
-          strip.text.x = element_text(family = "Helvetica", face = "bold", size = 10),
-          strip.text.y = element_text(family = "Helvetica", face = "bold", size = 10),
-          legend.position = "right",
-          legend.title = element_blank(),
-          legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
-  
-  ggsave(paste0("./data/", summary_folder, "/", selected, " afi_vs_mpm2_selected_subjects", ".pdf"), width = 16, height = 9, units = "in")
-  
   # ======================================
   
   # allocation proportion boxplots
@@ -615,15 +312,15 @@ summary_example1 <- function(data_file = "./data/example1.Rda", summary_folder =
     filter(design %in% selected_designs) %>%
     gather(treatment, proportion, -target, -design, -procedure) %>%
     group_by(target, design, procedure, treatment)
-  
-  map(seq_along(target_), function(i, target_, ap) {
+
+  map(seq_along(target_list), function(i, target_, ap) {
     w <- as.numeric(unlist(regmatches(target_[i], gregexpr("[[:digit:]]+", target_[i]))))
     ap %>%
       filter(target == target_[i]) %>%
       ggplot(aes(x = procedure, y = proportion))+
       geom_boxplot(aes(fill = procedure))+
       scale_y_continuous(breaks = w/sum(w))+
-      ggtitle(paste0("Allocation proportion: ", target_[i]))+
+      #ggtitle(paste0("Allocation proportion: ", target_[i]))+
       ylab("allocation proportion")+
       facet_wrap(~ treatment, ncol = 1)+
       theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
@@ -638,9 +335,9 @@ summary_example1 <- function(data_file = "./data/example1.Rda", summary_folder =
             legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
     
     
-    ggsave(paste0("./data/", summary_folder, "/", selected, " ap_boxplots (", target_[i],").pdf"), width = 16, height = 9, units = "in")
+    ggsave(paste0("./data/", summary_folder, "/", selected, " ap_boxplots (", target_[i],")", ext), width = 16, height = 9, units = "in", dpi = 300)
     
-  }, target_, ap)
+  }, target_list, ap)
   
   # unconditional allocation probability plots
   Pi <- example1 %>%
@@ -652,7 +349,7 @@ summary_example1 <- function(data_file = "./data/example1.Rda", summary_folder =
 
   design_ <- unique(Pi$design)
   
-  map(seq_along(target_), function(i, target_, design_, Pi) {
+  map(seq_along(target_list), function(i, target_, design_, Pi) {
     sub_Pi <- Pi %>%
       filter(target == target_[i])
     map(seq_along(design_), function(j, target_i, design_, sub_Pi) {
@@ -664,7 +361,7 @@ summary_example1 <- function(data_file = "./data/example1.Rda", summary_folder =
         geom_line(aes(color = treatment), size = 0.5)+
         scale_y_continuous(limits = c(0, 1), breaks = w/sum(w))+
         scale_color_manual(values = c("darkblue", "darkgreen", "black", "red"), labels = c("treatement 1", "treatement 2", "treatement 3", "treatement 4"))+
-        ggtitle(paste0("Unconditional allocation probability: ", target_i, ", ", design_[j]))+
+        #ggtitle(paste0("Unconditional allocation probability: ", target_i, ", ", design_[j]))+
         xlab("number of subjects")+
         ylab("unconditional allocation probability")+
         facet_wrap(~ procedure, nrow = 1)+
@@ -680,10 +377,35 @@ summary_example1 <- function(data_file = "./data/example1.Rda", summary_folder =
               legend.text  = element_text(family = "Helvetica", face = "bold", size = 16))
       
       
-      ggsave(paste0("./data/", summary_folder, "/", "[arp_property]", " pi_plots (", target_i, ", ", design[j], ").pdf"), width = 16, height = 9, units = "in")
+      ggsave(paste0("./data/", summary_folder, "/", "[arp_property]", " pi_plots (", target_i, ", ", design[j], ")", ext), width = 16, height = 9, units = "in", dpi = 300)
     }, target_[i], design_, sub_Pi)
-  }, target_, design_, Pi)
+  }, target_list, design_, Pi)
 
+  # plot for the paper in SIM
+  w <- c(4,3,2,1)
+  Pi %>%
+    filter(target == "w = (4,3,2,1)" & design %in% c("DBCD", "MaxEnt", "MWUD")) %>%
+    ggplot(aes(x = subject, y = value, group = treatment))+
+    geom_point(aes(color = treatment), size = 1.25)+
+    geom_line(aes(color = treatment), size = 0.5)+
+    scale_y_continuous(limits = c(0, 1), breaks = w/sum(w))+
+    scale_color_manual(values = c("darkblue", "darkgreen", "black", "red"), labels = c("treatement 1", "treatement 2", "treatement 3", "treatement 4"))+
+    #ggtitle(paste0("Unconditional allocation probability: ", target_i, ", ", design_[j]))+
+    xlab("number of subjects")+
+    ylab("unconditional allocation probability")+
+    facet_wrap(~ procedure, ncol = 5)+
+    theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
+          axis.title.y = element_text(family = "Helvetica", face = "bold", size = 12),
+          axis.text.x  = element_text(family = "Helvetica", face = "bold", size = 10),
+          axis.text.y  = element_text(family = "Helvetica", face = "bold", size = 10),
+          title = element_text(family = "Helvetica", face = "bold", size = 14),
+          strip.text.x = element_text(family = "Helvetica", face = "bold", size = 10),
+          strip.text.y = element_text(family = "Helvetica", face = "bold", size = 10),
+          legend.position = "bottom",
+          legend.title = element_blank(),
+          legend.text  = element_text(family = "Helvetica", face = "bold", size = 16))
+  
+  ggsave(paste0("./data/", summary_folder, "/", "[arp_property]", " pi_plots (w = (4,3,2,1), DBCD,MaxEnt, MWUD)", ext), width = 16, height = 9, units = "in", dpi = 300)
   # ======================================
   
   # cselect 4 designs to continuou:
@@ -693,7 +415,7 @@ summary_example1 <- function(data_file = "./data/example1.Rda", summary_folder =
   selected <- "[4_designs]"
   
   # allocation proportion boxplots
-  map(seq_along(target_), function(i, target_, ap) {
+  map(seq_along(target_list), function(i, target_, ap) {
     w <- as.numeric(unlist(regmatches(target_[i], gregexpr("[[:digit:]]+", target_[i]))))
     ap %>%
       filter(design %in% selected_designs) %>%
@@ -701,7 +423,7 @@ summary_example1 <- function(data_file = "./data/example1.Rda", summary_folder =
       ggplot(aes(x = procedure, y = proportion))+
       geom_boxplot(aes(fill = procedure))+
       scale_y_continuous(breaks = w/sum(w))+
-      ggtitle(paste0("Allocation proportion: ", target_[i]))+
+      #ggtitle(paste0("Allocation proportion: ", target_[i]))+
       ylab("allocation proportion")+
       facet_wrap(~ treatment, ncol = 1)+
       theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
@@ -716,13 +438,17 @@ summary_example1 <- function(data_file = "./data/example1.Rda", summary_folder =
             legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
     
     
-    ggsave(paste0("./data/", summary_folder, "/", selected, " ap_boxplots (", target_[i],").pdf"), width = 16, height = 9, units = "in")
+    ggsave(paste0("./data/", summary_folder, "/", selected, " ap_boxplots (", target_[i],")", ext), width = 16, height = 9, units = "in", dpi = 300)
     
-  }, target_, ap)
+  }, target_list, ap)
 
     
-  op1 <- op %>%
-    filter(design %in% selected_designs)
+  op1 <- example1 %>%
+    map(~ {.$op}) %>%
+    bind_rows() %>%
+    filter(design %in% selected_designs) %>%
+    select(-MI, -AMPM1, -ACMPM1, -AMPM2, -ACMPM2)
+  op1$target <- factor(op1$target, levels = target_list, ordered = TRUE)
   
   design <- unique(op1$design)
   procedure <- unique(op1$procedure)
@@ -745,8 +471,6 @@ summary_example1 <- function(data_file = "./data/example1.Rda", summary_folder =
   design_values <- shape[1:4]
   names(design_values) <- design
   
-  target_ <- unique(op1$target)
-  
   # ASD vs AFI for selected subjects
   sub_op11 <- op1 %>%
     filter(subject %in% c(50, 100, 200)) 
@@ -760,7 +484,7 @@ summary_example1 <- function(data_file = "./data/example1.Rda", summary_folder =
     geom_text(data = sub_op12, aes(x = AFI, y = ASD, label=procedure, color = procedure),
               size = 4, angle = 60 , family = "Helvetica", check_overlap = FALSE, nudge_y = 0.15)+
     labs(shape="# of subjects")+
-    ggtitle("\"Average Standard Deviation\" of Allocation Proportions (ASD) vs. Average Forcing Index (AFI)")+
+    #ggtitle("\"Average Standard Deviation\" of Allocation Proportions (ASD) vs. Average Forcing Index (AFI)")+
     ylab("ASD")+
     facet_wrap(~ target, ncol = 1, scales = "free_y")+
     theme(axis.title.x = element_text(family = "Helvetica", face = "bold", size = 12),
@@ -775,7 +499,7 @@ summary_example1 <- function(data_file = "./data/example1.Rda", summary_folder =
           legend.text  = element_text(family = "Helvetica", face = "bold", size = 10))
   
    
-  ggsave(paste0("./data/", summary_folder, "/", selected, " asd_vs_afi.pdf"), width = 16, height = 9, units = "in")
+  ggsave(paste0("./data/", summary_folder, "/", selected, " asd_vs_afi", ext), width = 16, height = 9, units = "in", dpi = 300)
   
   
   # type I error/power
@@ -833,10 +557,9 @@ summary_example1 <- function(data_file = "./data/example1.Rda", summary_folder =
     spread(variable, alpha)
   
   # create *.xlxs file with type I error/power values
-  target_ <- unique(alpha$target)
   
   wb <- loadWorkbook(paste0("./data/", summary_folder, "/alpha.xlsx"), create = TRUE)
-  map(seq_along(target_), function(i, target_, alpha, wb) {
+  map(seq_along(target_list), function(i, target_, alpha, wb) {
     createSheet(wb, name =gsub(":", " ", target_))
     sub_alpha1 <- alpha %>% 
       filter(target == target_[i] & subject == 50) %>%
@@ -875,9 +598,9 @@ summary_example1 <- function(data_file = "./data/example1.Rda", summary_folder =
       by = c("procedure")
     )
     
-    writeWorksheet(wb, sub_alpha, sheet = gsub(":", " ", target_[i]))
+    writeWorksheet(wb, sub_alpha, sheet = target_[i])
     
-  }, target_, alpha, wb)
+  }, target_list, alpha, wb)
   saveWorkbook(wb) 
 }
 
