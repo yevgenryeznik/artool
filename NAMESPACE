@@ -3,5 +3,6 @@
 export(response)
 export(restricted_app)
 export(rr)
+export(run_example1)
 export(simulate_rr)
 useDynLib(artool)
