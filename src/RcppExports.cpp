@@ -19,13 +19,13 @@ BEGIN_RCPP
 END_RCPP
 }
 // restricted
-List restricted(int number_of_subjects, IntegerVector w, std::string procedure, double p, std::string distribution, List parameter);
+List restricted(int number_of_subjects, NumericVector w, std::string procedure, double p, std::string distribution, List parameter);
 RcppExport SEXP _artool_restricted(SEXP number_of_subjectsSEXP, SEXP wSEXP, SEXP procedureSEXP, SEXP pSEXP, SEXP distributionSEXP, SEXP parameterSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< int >::type number_of_subjects(number_of_subjectsSEXP);
-    Rcpp::traits::input_parameter< IntegerVector >::type w(wSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type w(wSEXP);
     Rcpp::traits::input_parameter< std::string >::type procedure(procedureSEXP);
     Rcpp::traits::input_parameter< double >::type p(pSEXP);
     Rcpp::traits::input_parameter< std::string >::type distribution(distributionSEXP);
@@ -35,14 +35,14 @@ BEGIN_RCPP
 END_RCPP
 }
 // simulate_restricted
-List simulate_restricted(int number_of_simulations, int number_of_subjects, IntegerVector w, std::string procedure, double p, std::string distribution, List parameter);
+List simulate_restricted(int number_of_simulations, int number_of_subjects, NumericVector w, std::string procedure, double p, std::string distribution, List parameter);
 RcppExport SEXP _artool_simulate_restricted(SEXP number_of_simulationsSEXP, SEXP number_of_subjectsSEXP, SEXP wSEXP, SEXP procedureSEXP, SEXP pSEXP, SEXP distributionSEXP, SEXP parameterSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< int >::type number_of_simulations(number_of_simulationsSEXP);
     Rcpp::traits::input_parameter< int >::type number_of_subjects(number_of_subjectsSEXP);
-    Rcpp::traits::input_parameter< IntegerVector >::type w(wSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type w(wSEXP);
     Rcpp::traits::input_parameter< std::string >::type procedure(procedureSEXP);
     Rcpp::traits::input_parameter< double >::type p(pSEXP);
     Rcpp::traits::input_parameter< std::string >::type distribution(distributionSEXP);
