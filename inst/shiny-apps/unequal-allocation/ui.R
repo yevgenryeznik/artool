@@ -26,7 +26,8 @@ shinyUI(fluidPage(
       tags$b("Response: Normal"),
       wellPanel(
         textInput('resp_mean', 'Means (comma delimited)', "0, 0, 0, 0"),
-        textInput('resp_sd', 'SDs (comma delimited)', "1, 1, 1, 1")
+        textInput('resp_sd', 'SDs (comma delimited)', "1, 1, 1, 1"),
+        checkboxInput("add_time_drift", "With time drift", 0)
       ),
       textInput('alpha', 'Significance level', "0.05"),
       tags$b("Randomization procedures"),

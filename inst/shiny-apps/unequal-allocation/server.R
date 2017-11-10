@@ -71,14 +71,19 @@ shinyServer(function(input, output) {
     alpha <- as.numeric(input$alpha)
     
     trials <- Map(function(proc, proc_param){
-      simulate_rr(nsim, nsbj, w, proc, proc_param, distr, distr_param)
+      trial <- simulate_rr(nsim, nsbj, w, proc, proc_param, distr, distr_param)
+      if (input$add_time_drift) {
+        trial$response <- trial$response +
+          matrix(rep(seq(1, nsbj)/nsbj, nsim), nrow = nsim, byrow = TRUE)
+      } 
+      return(trial)
     }, proc, proc_param)
 
 
     sim_data$op <- trials %>%
       map(~ {.$op}) %>%
       bind_rows() %>%
-      select(target, design, procedure, subject, MI, AFI, AMPM = AMPM1) %>%
+      select(target, design, procedure, subject, MI, AFI, ACMPM = ACMPM2) %>%
       gather(variable, value, -target, -design, -procedure, -subject)
 
           
@@ -113,30 +118,30 @@ shinyServer(function(input, output) {
     
     
     ovp <- sim_data$op %>%
-      filter(subject == max(.$subject) & variable %in% c("ACMPM2", "AFI")) %>%
+      filter(subject == max(.$subject) & variable %in% c("ACMPM", "AFI")) %>%
       group_by(target, subject)
     
     mi <- ovp %>%
-      filter(procedure %in% c("CRD", "MaxEnt (1)") & variable == "ACMPM2") %>%
+      filter(procedure %in% c("CRD", "MaxEnt (1)") & variable == "ACMPM") %>%
       select(target, subject, procedure, value) %>% 
       spread(procedure, value) %>% 
-      rename(ACMPM_CRD = CRD, ACMPM_MaxEnt1 = `MaxEnt (1)`) %>%
+      rename(ACMPM_CRD = `CRD`, ACMPM_MaxEnt1 = `MaxEnt (1)`) %>%
       group_by(target, subject)
     
     afi <- ovp %>%
       filter(procedure %in% c("CRD", "MaxEnt (1)") & variable == "AFI") %>%
       select(target, subject, procedure, value) %>% 
       spread(procedure, value) %>% 
-      rename(AFI_CRD = CRD, AFI_MaxEnt1 = `MaxEnt (1)`) %>%
+      rename(AFI_CRD = `CRD`, AFI_MaxEnt1 = `MaxEnt (1)`) %>%
       group_by(target, subject)
     
     wI <- wR <- 1
     sim_data$ovp <- ovp %>%
-      select(target, subject, procedure, variable, value) %>% 
-      spread(variable, value) %>% 
+      select(target, subject, procedure, variable, value) %>%
+      spread(variable, value) %>%
       inner_join(mi, by = c("target", "subject")) %>%
       inner_join(afi, by = c("target", "subject")) %>%
-      mutate(UI = ACMPM2/(ACMPM_CRD-ACMPM_MaxEnt1)-ACMPM_MaxEnt1/(ACMPM_CRD-ACMPM_MaxEnt1),
+      mutate(UI = ACMPM/(ACMPM_CRD-ACMPM_MaxEnt1)-ACMPM_MaxEnt1/(ACMPM_CRD-ACMPM_MaxEnt1),
              UR = AFI/(AFI_MaxEnt1-AFI_CRD)-AFI_CRD/(AFI_MaxEnt1-AFI_CRD),
              G = sqrt(((wI*UI)^2 +(wR*UR)^2)/(wI^2 + wR^2))) %>%
       arrange(G) %>%
