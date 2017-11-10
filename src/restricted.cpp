@@ -14,7 +14,7 @@
 //    p -- parameter of a randoomization procedure
 
 // Completely Randomized Design: CRD
-List crd(int j, IntegerVector N, IntegerVector w, double p) {
+List crd(int j, IntegerVector N, NumericVector w, double p) {
   int number_of_treatments = w.size();
   
   NumericVector prob = as<NumericVector>(w)/sum(w);
@@ -27,7 +27,7 @@ List crd(int j, IntegerVector N, IntegerVector w, double p) {
 
 
 // Permuted Block Design: PBD(p == b)
-List pbd(int j, IntegerVector N, IntegerVector w, double p) {
+List pbd(int j, IntegerVector N, NumericVector w, double p) {
   int number_of_treatments = w.size();
   
   // block size
@@ -46,7 +46,7 @@ List pbd(int j, IntegerVector N, IntegerVector w, double p) {
 
 
 // Block Urn Design: BUD(p == lambda)
-List bud(int j, IntegerVector N, IntegerVector w, double p) {
+List bud(int j, IntegerVector N, NumericVector w, double p) {
   int number_of_treatments = w.size();
   
   int k = min(Rcpp::floor(as<NumericVector>(N)/as<NumericVector>(w)));
@@ -61,7 +61,7 @@ List bud(int j, IntegerVector N, IntegerVector w, double p) {
 
 
 // Mass Weight Urn Design: MWUD(p == alpha)
-List mwud(int j, IntegerVector N, IntegerVector w, double p) {
+List mwud(int j, IntegerVector N, NumericVector w, double p) {
   int number_of_treatments = w.size();
   
   NumericVector prob(number_of_treatments);
@@ -79,7 +79,7 @@ List mwud(int j, IntegerVector N, IntegerVector w, double p) {
 
 
 // Drop-the-Loser: DL(p == a)
-List dl(int j, IntegerVector N, IntegerVector w, double p, IntegerVector urn){
+List dl(int j, IntegerVector N, NumericVector w, double p, IntegerVector urn){
   int number_of_treatments = w.size();
   
   int trt;
@@ -88,7 +88,7 @@ List dl(int j, IntegerVector N, IntegerVector w, double p, IntegerVector urn){
   while(flag){
     trt = sample(seq_len(urn.size()), as<NumericVector>(urn)/sum(urn))-1;
     if (trt == 0) {
-      urn[seq(1, number_of_treatments)] = urn[seq(1, number_of_treatments)]+(int)p*w;
+      urn[seq(1, number_of_treatments)] = urn[seq(1, number_of_treatments)]+(int)p*as<IntegerVector>(w);
     }
     else {
       prob = as<NumericVector>(urn)[seq(1, number_of_treatments)]/
@@ -105,7 +105,7 @@ List dl(int j, IntegerVector N, IntegerVector w, double p, IntegerVector urn){
 
 
 // Doubly-Adaptive Biased Coind Design: DBCD(p == gamma)
-List dbcd(int j, IntegerVector N, IntegerVector w, double p) {
+List dbcd(int j, IntegerVector N, NumericVector w, double p) {
   int number_of_treatments = w.size();
   
   // target allocation proportion
@@ -131,7 +131,7 @@ List dbcd(int j, IntegerVector N, IntegerVector w, double p) {
 
 
 // Minimum Quadrati Distance: MinQD(p == eta)
-List min_qd(int j, IntegerVector N, IntegerVector w, double p){
+List min_qd(int j, IntegerVector N, NumericVector w, double p){
   int number_of_treatments = w.size();
   
   // target allocation 
@@ -166,7 +166,7 @@ List min_qd(int j, IntegerVector N, IntegerVector w, double p){
 
 
 // Maximum Entropy: MaxEnt(p == eta)
-List max_ent(int j, IntegerVector N, IntegerVector w, double p){
+List max_ent(int j, IntegerVector N, NumericVector w, double p){
   int number_of_treatments = w.size();
   
   // target allocation 
@@ -217,7 +217,7 @@ List max_ent(int j, IntegerVector N, IntegerVector w, double p){
 //    w -- fixed allocation ratio
 //    procedure -- randomization procedure
 //    p -- parameter of the randomization procedure
-std::function<List (int, IntegerVector)> set_rand_procedure(IntegerVector w, std::string procedure, double p) {
+std::function<List (int, IntegerVector)> set_rand_procedure(NumericVector w, std::string procedure, double p) {
   std::function<List (int, IntegerVector)> fcn;
   if (procedure == "CRD") {      // Completely Randomized Design
     fcn = [w, p](int j, IntegerVector N){
@@ -242,7 +242,7 @@ std::function<List (int, IntegerVector)> set_rand_procedure(IntegerVector w, std
   else if (procedure == "DL") {   // Drop-the-Loser
     IntegerVector urn(w.size()+1);
     urn[0] = 1;
-    urn[seq(1, w.size())] = w;
+    urn[seq(1, w.size())] = as<IntegerVector>(w);
     fcn = [w, p, urn](int j, IntegerVector N){
       return dl(j, N, w, p, urn);
     };
@@ -271,7 +271,7 @@ std::function<List (int, IntegerVector)> set_rand_procedure(IntegerVector w, std
 
 // restricted randomization procedure
 //[[Rcpp::export(.restricted)]]
-List restricted(int number_of_subjects, IntegerVector w, std::string procedure, double p, 
+List restricted(int number_of_subjects, NumericVector w, std::string procedure, double p, 
             std::string distribution, List parameter){
   int number_of_treatments = w.size();
   IntegerVector k = seq_len(number_of_treatments);
@@ -371,7 +371,7 @@ List restricted(int number_of_subjects, IntegerVector w, std::string procedure, 
 //[[Rcpp::export(.simulate_restricted)]]
 List simulate_restricted(int number_of_simulations, 
                          int number_of_subjects, 
-                         IntegerVector w, 
+                         NumericVector w, 
                          std::string procedure, 
                          double p, 
                          std::string distribution, 
