@@ -37,6 +37,12 @@ List mwud(int, IntegerVector, NumericVector, double);
 List dl(int, IntegerVector, NumericVector, double, IntegerVector);
 
 
+// Generalized Drop-the-Loser: GDL(p == a)
+// contains additional argument 
+//    NumericVector (urn) -- urn state for a design
+List gdl(int, IntegerVector, NumericVector, double, NumericVector);
+
+
 // Doubly-Adaptive Biased Coind Design: DBCD(p == gamma)
 List dbcd(int, IntegerVector, NumericVector, double);
 
