@@ -111,7 +111,8 @@ List dl(int j, IntegerVector N, NumericVector w, double p, IntegerVector urn){
 List gdl(int j, IntegerVector N, NumericVector w, double p, NumericVector urn){
   int number_of_treatments = w.size();
   
-  NumericVector urn1(urn);
+  NumericVector urn1(urn.size());
+  urn1[0] = 1;
   
   int trt;
   NumericVector prob(number_of_treatments);
@@ -123,8 +124,8 @@ List gdl(int j, IntegerVector N, NumericVector w, double p, NumericVector urn){
       urn[seq(1, number_of_treatments)] = urn[seq(1, number_of_treatments)]+p*w;
     }
     else {
-      prob = urn1[seq(1, number_of_treatments)]/
-        sum(urn1[seq(1, number_of_treatments)]);
+      prob = urn[seq(1, number_of_treatments)]/
+        sum(urn[seq(1, number_of_treatments)]);
       urn[trt] = urn[trt]-1;
       flag = false;
     }
