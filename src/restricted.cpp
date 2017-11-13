@@ -112,7 +112,7 @@ List gdl(int j, IntegerVector N, NumericVector w, double p, NumericVector urn){
   int number_of_treatments = w.size();
   
   NumericVector urn1;
-  for(int k = 0; k < urn.size(); k++) {urn1[k] = (0 > urn[k] ? 0 : urn[k]);}
+  for(int k = 1; k < urn.size(); k++) {urn1[k] = (0 > urn[k] ? 0 : urn[k]);}
   
   int trt;
   NumericVector prob(number_of_treatments);
