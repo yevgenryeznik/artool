@@ -279,6 +279,14 @@ std::function<List (int, IntegerVector)> set_rand_procedure(NumericVector w, std
       return dl(j, N, w, p, urn);
     };
   }
+  else if (procedure == "GDL") {   // Generalized Drop-the-Loser
+    NumericVector urn(w.size()+1);
+    urn[0] = 1;
+    urn[seq(1, w.size())] = w;
+    fcn = [w, p, urn](int j, IntegerVector N){
+      return gdl(j, N, w, p, urn);
+    };
+  }
   else if (procedure == "DBCD") { // Doubly-Adaptive Biased Coin
     fcn = [w, p](int j, IntegerVector N){
       return dbcd(j, N, w, p);
