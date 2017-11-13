@@ -112,12 +112,12 @@ List gdl(int j, IntegerVector N, NumericVector w, double p, NumericVector urn){
   int number_of_treatments = w.size();
   
   NumericVector urn1(urn);
-  for(int k = 1; k < urn.size(); k++) {urn1[k] = ((0 > urn1[k]) ? 0 : urn1[k]);}
   
   int trt;
   NumericVector prob(number_of_treatments);
   bool flag = true;
   while(flag){
+    for(int k = 1; k < urn.size(); k++) {urn1[k] = ((0 > urn1[k]) ? 0 : urn1[k]);}
     trt = sample(seq_len(urn.size()), urn1/sum(urn1))-1;
     if (trt == 0) {
       urn[seq(1, number_of_treatments)] = urn[seq(1, number_of_treatments)]+p*w;
