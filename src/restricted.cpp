@@ -64,11 +64,14 @@ List bud(int j, IntegerVector N, NumericVector w, double p) {
 List mwud(int j, IntegerVector N, NumericVector w, double p) {
   int number_of_treatments = w.size();
   
+  // target allocation 
+  NumericVector rho = as<NumericVector>(w)/sum(w);                                     
+  
   NumericVector prob(number_of_treatments);
   IntegerVector k = seq_len(number_of_treatments);
   
-  for_each(k.begin(), k.end(), [&j, &N, &w, &p, &prob](int &k){
-    prob[k-1] = Rcpp::max(NumericVector::create(p*w[k-1] - N[k-1] + (j-1)*w[k-1], 0));
+  for_each(k.begin(), k.end(), [&j, &N, &rho, &p, &prob](int &k){
+    prob[k-1] = Rcpp::max(NumericVector::create(p*rho[k-1] - N[k-1] + (j-1)*rho[k-1], 0));
   });
   prob = prob/sum(prob);
   int trt = sample(k, prob);
@@ -98,6 +101,35 @@ List dl(int j, IntegerVector N, NumericVector w, double p, IntegerVector urn){
     }
   }
 
+  return List::create(_["treatement"] = trt, 
+                      _["probability"] = prob);
+  
+}
+
+
+// Generalized Drop-the-Loser: DL(p == a)
+List gdl(int j, IntegerVector N, NumericVector w, double p, NumericVector urn){
+  int number_of_treatments = w.size();
+  
+  NumericVector urn1;
+  for(int k = 0; k < urn.size(); k++) {urn1[k] = (0 > urn[k] ? 0 : urn[k]);}
+  
+  int trt;
+  NumericVector prob(number_of_treatments);
+  bool flag = true;
+  while(flag){
+    trt = sample(seq_len(urn.size()), urn1/sum(urn1))-1;
+    if (trt == 0) {
+      urn[seq(1, number_of_treatments)] = urn[seq(1, number_of_treatments)]+p*w;
+    }
+    else {
+      prob = as<NumericVector>(urn)[seq(1, number_of_treatments)]/
+        sum(urn[seq(1, number_of_treatments)]);
+      urn[trt] = urn[trt]-1;
+      flag = false;
+    }
+  }
+  
   return List::create(_["treatement"] = trt, 
                       _["probability"] = prob);
   
