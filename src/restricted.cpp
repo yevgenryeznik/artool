@@ -111,8 +111,8 @@ List dl(int j, IntegerVector N, NumericVector w, double p, IntegerVector urn){
 List gdl(int j, IntegerVector N, NumericVector w, double p, NumericVector urn){
   int number_of_treatments = w.size();
   
-  NumericVector urn1(urn.size());
-  for(int k = 1; k < urn.size(); k++) {urn1[k] = ((0 > urn[k]) ? 0 : urn[k]);}
+  NumericVector urn1(urn);
+  for(int k = 1; k < urn.size(); k++) {urn1[k] = ((0 > urn1[k]) ? 0 : urn1[k]);}
   
   int trt;
   NumericVector prob(number_of_treatments);
