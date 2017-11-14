@@ -231,7 +231,7 @@ List max_ent(int j, IntegerVector N, NumericVector w, double p){
         return min(B)*p + (1-p)*sum(rho*B) - sum(B*rho*exp(-mu*B))/sum(rho*exp(-mu*B));
       };
       
-      double mu = bisection(fcn, 0, 1000/max(B), 1e-5);
+      double mu = bisection(fcn, 0, 700/max(B), 1e-5);
       prob = rho*exp(-mu*B)/sum(rho*exp(-mu*B));
     }
   }
