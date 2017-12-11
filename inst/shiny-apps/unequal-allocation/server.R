@@ -22,7 +22,8 @@ shinyServer(function(input, output) {
   
   observeEvent(input$simulate, {
 
-    proc_selected <- c(input$proc1_check,
+    proc_selected <- c(input$proc11_check,
+                       input$proc12_check,
                        input$proc2_check,
                        input$proc3_check,
                        input$proc4_check,
@@ -32,6 +33,7 @@ shinyServer(function(input, output) {
                        input$proc8_check)
 
     proc_name <- c("CRD",
+                   "MaxEnt",
                    input$proc2_name,
                    input$proc3_name,
                    input$proc4_name,
@@ -41,6 +43,7 @@ shinyServer(function(input, output) {
                    input$proc8_name)
 
     proc_param <- as.numeric(c("NA",
+                               1,
                                input$proc2_param,
                                input$proc3_param,
                                input$proc4_param,
